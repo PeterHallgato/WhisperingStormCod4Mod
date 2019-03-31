@@ -1,0 +1,41 @@
+///==========================================///
+///    _____    _               _            ///
+///   |  __ \  (_)             | |           ///
+///   | |  | |  _    ___     __| |   __ _    ///
+///   | |  | | | |  / _ \   / _` |  / _` |   ///
+///   | |__| | | | | (_) | | (_| | | (_| |   ///
+///   |_____/  |_|  \___/   \__,_|  \__,_|   ///
+///                                          ///
+///           www.servergreen.eu             ///
+///                                          ///
+///==========================================///
+
+Plugin_Load(name, creator, func)
+{
+	index = level.newPlugin.size;
+	level.newPlugin[index]["name"] = name;
+	level.newPlugin[index]["creator"] = creator;
+	level.newPlugin[index]["func"] = func;
+}
+
+Plugin_AddEvent(type, func)
+{
+	index = level.newPluginEvent.size;
+	level.newPluginEvent[index]["type"] = type;
+	level.newPluginEvent[index]["func"] = func;
+}
+
+Plugin_createHud()
+{
+	index = level.newServerHud.size;
+	level.newServerHud[index] = newHudElem();
+	return level.newServerHud[index];
+}
+
+Plugin_createClientHud()
+{
+	index = self.newClientHud.size;
+	self.newClientHud[index] = NewClientHudElem(self);
+	return self.newClientHud[index];
+}
+

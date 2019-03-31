@@ -1,0 +1,438 @@
+///==========================================///
+///    _____    _               _            ///
+///   |  __ \  (_)             | |           ///
+///   | |  | |  _    ___     __| |   __ _    ///
+///   | |  | | | |  / _ \   / _` |  / _` |   ///
+///   | |__| | | | | (_) | | (_| | | (_| |   ///
+///   |_____/  |_|  \___/   \__,_|  \__,_|   ///
+///                                          ///
+///           www.servergreen.eu             ///
+///                                          ///
+///==========================================///
+
+#include dioda_greenadmin\greenapi;
+
+loadHudStrings()
+{
+	precacheString(&"FPS: &&1");
+	precacheString(&"PING: &&1");
+	precacheString(&"$ &&1");
+	precacheString(&" | &&1");
+	precacheString(&"GREEN_ONLINESTATUS");
+	precacheString(&"GREEN_TIME");
+	
+	n = 742;
+	for(i = 0; i < 64; i++)
+	{
+		SetConfigstring(n,"" + "GREEN_STATISTIC_" + i);
+		n++;
+	}
+	//SetConfigstring(742, "GREEN_TIME");
+	//SetConfigstring(743, "GREEN_ONLINESTATUS");
+	
+	//level thread updateStatus();
+}
+
+loadHudShader()
+{
+	precacheShader("weapon_fraggrenade");
+	precacheShader("weapon_flashbang");
+	precacheShader("weapon_smokegrenade");
+	precacheShader("line_horizontal");
+	precacheShader("line_vertical");
+}
+
+loadAllClientHud()
+{
+	if(self.pers["ghud"]["fps"])
+	{
+		self setClientDvar("cg_drawfps", 0);
+		self.newClientHud[0] = NewClientHudElem(self);
+		self.newClientHud[0].name = "fps";
+		self.newClientHud[0].type = "text";
+		self.newClientHud[0].x = 800;
+		self.newClientHud[0].y = 8;
+		self.newClientHud[0].horzAlign = "left";
+		self.newClientHud[0].vertAlign = "top";
+		self.newClientHud[0].alignX = "left";
+		self.newClientHud[0].alignY = "middle";
+		self.newClientHud[0].alpha = self.pers["ghud"]["alpha"];
+		self.newClientHud[0].fontScale = 1.4;
+		self.newClientHud[0].color = self.pers["ghud"]["color"];
+		self.newClientHud[0].glowColor = self.pers["ghud"]["glow_color"];
+		self.newClientHud[0].glowAlpha = self.pers["ghud"]["glow_alpha"];
+		self.newClientHud[0].hidewheninmenu = true;
+		self.newClientHud[0].label = &"FPS: &&1";
+		self.newClientHud[0] setValue(0);
+		self thread updateClientFpsHud();
+	}
+	
+	if(self.pers["ghud"]["ping"])
+	{
+		self.newClientHud[1] = NewClientHudElem(self);
+		self.newClientHud[1].name = "ping";
+		self.newClientHud[1].type = "text";
+		self.newClientHud[1].x = 740;
+		self.newClientHud[1].y = 8;
+		self.newClientHud[1].horzAlign = "left";
+		self.newClientHud[1].vertAlign = "top";
+		self.newClientHud[1].alignX = "left";
+		self.newClientHud[1].alignY = "middle";
+		self.newClientHud[1].alpha = self.pers["ghud"]["alpha"];
+		self.newClientHud[1].fontScale = 1.4;
+		self.newClientHud[1].color = self.pers["ghud"]["color"];
+		self.newClientHud[1].glowColor = self.pers["ghud"]["glow_color"];
+		self.newClientHud[1].glowAlpha = self.pers["ghud"]["glow_alpha"];
+		self.newClientHud[1].hidewheninmenu = true;
+		self.newClientHud[1].label = &"PING: &&1";
+		self.newClientHud[1] setValue(0);
+		self thread updateClientPingHud();
+	}
+	
+	if(self.pers["ghud"]["statistic"])
+	{
+		self.newClientHud[2] = NewClientHudElem(self);
+		self.newClientHud[2].name = "statistic";
+		self.newClientHud[2].type = "text";
+		self.newClientHud[2].x = 590;
+		self.newClientHud[2].y = 8;
+		self.newClientHud[2].horzAlign = "left";
+		self.newClientHud[2].vertAlign = "top";
+		self.newClientHud[2].alignX = "left";
+		self.newClientHud[2].alignY = "middle";
+		self.newClientHud[2].alpha = self.pers["ghud"]["alpha"];
+		self.newClientHud[2].fontScale = 1.4;
+		self.newClientHud[2].color = self.pers["ghud"]["color"];
+		self.newClientHud[2].glowColor = self.pers["ghud"]["glow_color"];
+		self.newClientHud[2].glowAlpha = self.pers["ghud"]["glow_alpha"];
+		self.newClientHud[2].hidewheninmenu = true;
+		self.newClientHud[2] setText("GREEN_STATISTIC_" + self.pers["info"]["entnum"]);
+		self thread updateClientStats();
+	}
+	
+	if(self.pers["ghud"]["money"])
+	{
+		self.newClientHud[3] = NewClientHudElem(self);
+		self.newClientHud[3].name = "money";
+		self.newClientHud[3].type = "text";
+		self.newClientHud[3].x = 800;
+		self.newClientHud[3].y = 410;
+		self.newClientHud[3].horzAlign = "left";
+		self.newClientHud[3].vertAlign = "top";
+		self.newClientHud[3].alignX = "left";
+		self.newClientHud[3].alignY = "middle";
+		self.newClientHud[3].alpha = self.pers["ghud"]["alpha"];
+		self.newClientHud[3].fontScale = 1.4;
+		self.newClientHud[3].color = self.pers["ghud"]["color"];
+		self.newClientHud[3].glowColor = self.pers["ghud"]["glow_color"];
+		self.newClientHud[3].glowAlpha = self.pers["ghud"]["glow_alpha"];
+		self.newClientHud[3].hidewheninmenu = true;
+		self.newClientHud[3].label = &"$ &&1";
+		self.newClientHud[3] setValue(self.pers["info"]["money"]);
+	}
+	
+	if(self.pers["ghud"]["ammo"])
+	{
+		self.newClientHud[4] = NewClientHudElem(self);
+		self.newClientHud[4].name = "separator";
+		self.newClientHud[4].type = "shader";
+		self.newClientHud[4].x = 785;
+		self.newClientHud[4].y = 420;
+		self.newClientHud[4].horzAlign = "left";
+		self.newClientHud[4].vertAlign = "top";
+		self.newClientHud[4].alignX = "left";
+		self.newClientHud[4].alignY = "middle";
+		self.newClientHud[4].alpha = self.pers["ghud"]["alpha"];
+		self.newClientHud[4].fontScale = 1.4;
+		self.newClientHud[4].color = self.pers["ghud"]["color"];
+		self.newClientHud[4].glowColor = self.pers["ghud"]["glow_color"];
+		self.newClientHud[4].glowAlpha = self.pers["ghud"]["glow_alpha"];
+		self.newClientHud[4].hidewheninmenu = true;
+		self.newClientHud[4] setShader("white", 70, 1);
+		
+		self.newClientHud[5] = NewClientHudElem(self);
+		self.newClientHud[5].name = "clip_ammo";
+		self.newClientHud[5].type = "text";
+		self.newClientHud[5].x = 795;
+		self.newClientHud[5].y = 430;
+		self.newClientHud[5].horzAlign = "left";
+		self.newClientHud[5].vertAlign = "top";
+		self.newClientHud[5].alignX = "left";
+		self.newClientHud[5].alignY = "middle";
+		self.newClientHud[5].alpha = self.pers["ghud"]["alpha"];
+		self.newClientHud[5].fontScale = 1.4;
+		self.newClientHud[5].color = self.pers["ghud"]["color"];
+		self.newClientHud[5].glowColor = self.pers["ghud"]["glow_color"];
+		self.newClientHud[5].glowAlpha = self.pers["ghud"]["glow_alpha"];
+		self.newClientHud[5].hidewheninmenu = true;
+		self.newClientHud[5] setValue(30);
+		
+		self.newClientHud[6] = NewClientHudElem(self);
+		self.newClientHud[6].name = "stock_ammo";
+		self.newClientHud[6].type = "text";
+		self.newClientHud[6].x = 817;
+		self.newClientHud[6].y = 430;
+		self.newClientHud[6].horzAlign = "left";
+		self.newClientHud[6].vertAlign = "top";
+		self.newClientHud[6].alignX = "left";
+		self.newClientHud[6].alignY = "middle";
+		self.newClientHud[6].alpha = self.pers["ghud"]["alpha"];
+		self.newClientHud[6].fontScale = 1.4;
+		self.newClientHud[6].color = self.pers["ghud"]["color"];
+		self.newClientHud[6].glowColor = self.pers["ghud"]["glow_color"];
+		self.newClientHud[6].glowAlpha = self.pers["ghud"]["glow_alpha"];
+		self.newClientHud[6].hidewheninmenu = true;
+		self.newClientHud[6].label = &" | &&1";
+		self.newClientHud[6] setValue(160);
+		
+		self.newClientHud[7] = NewClientHudElem(self);
+		self.newClientHud[7].name = "separator";
+		self.newClientHud[7].type = "shader";
+		self.newClientHud[7].x = 770;
+		self.newClientHud[7].y = 440;
+		self.newClientHud[7].horzAlign = "left";
+		self.newClientHud[7].vertAlign = "top";
+		self.newClientHud[7].alignX = "left";
+		self.newClientHud[7].alignY = "middle";
+		self.newClientHud[7].alpha = self.pers["ghud"]["alpha"];
+		self.newClientHud[7].fontScale = 1.4;
+		self.newClientHud[7].color = self.pers["ghud"]["color"];
+		self.newClientHud[7].glowColor = self.pers["ghud"]["glow_color"];
+		self.newClientHud[7].glowAlpha = self.pers["ghud"]["glow_alpha"];
+		self.newClientHud[7].hidewheninmenu = true;
+		self.newClientHud[7] setShader("white", 90, 1);
+		
+		self thread updateClientAmmoAndGranade();
+	}
+	
+	if(self.pers["ghud"]["frags"])
+	{
+		self.newClientHud[8] = NewClientHudElem(self);
+		self.newClientHud[8].name = "granade_special";
+		self.newClientHud[8].type = "shader";
+		self.newClientHud[8].gshader = "weapon_flashbang";
+		self.newClientHud[8].x = 755;
+		self.newClientHud[8].y = 460;
+		self.newClientHud[8].horzAlign = "left";
+		self.newClientHud[8].vertAlign = "top";
+		self.newClientHud[8].alignX = "left";
+		self.newClientHud[8].alignY = "middle";
+		self.newClientHud[8].alpha = self.pers["ghud"]["alpha"];
+		self.newClientHud[8].color = self.pers["ghud"]["color"];
+		self.newClientHud[8].glowColor = self.pers["ghud"]["glow_color"];
+		self.newClientHud[8].glowAlpha = self.pers["ghud"]["glow_alpha"];
+		self.newClientHud[8].hidewheninmenu = true;
+		self.newClientHud[8] setShader("weapon_flashbang", 45, 45);
+		
+		self.newClientHud[9] = NewClientHudElem(self);
+		self.newClientHud[9].name = "granade_special_val";
+		self.newClientHud[9].type = "text";
+		self.newClientHud[9].x = 790;
+		self.newClientHud[9].y = 465;
+		self.newClientHud[9].horzAlign = "left";
+		self.newClientHud[9].vertAlign = "top";
+		self.newClientHud[9].alignX = "left";
+		self.newClientHud[9].alignY = "middle";
+		self.newClientHud[9].alpha = self.pers["ghud"]["alpha"];
+		self.newClientHud[9].fontScale = 2;
+		self.newClientHud[9].color = self.pers["ghud"]["color"];
+		self.newClientHud[9].glowColor = self.pers["ghud"]["glow_color"];
+		self.newClientHud[9].glowAlpha = self.pers["ghud"]["glow_alpha"];
+		self.newClientHud[9].hidewheninmenu = true;
+		self.newClientHud[9] setValue(0);
+		
+		self.newClientHud[10] = NewClientHudElem(self);
+		self.newClientHud[10].name = "granade_frag";
+		self.newClientHud[10].type = "shader";
+		self.newClientHud[10].x = 800;
+		self.newClientHud[10].y = 460;
+		self.newClientHud[10].horzAlign = "left";
+		self.newClientHud[10].vertAlign = "top";
+		self.newClientHud[10].alignX = "left";
+		self.newClientHud[10].alignY = "middle";
+		self.newClientHud[10].alpha = self.pers["ghud"]["alpha"];
+		self.newClientHud[10].sort = 1;
+		self.newClientHud[10].color = self.pers["ghud"]["color"];
+		self.newClientHud[10].glowColor = self.pers["ghud"]["glow_color"];
+		self.newClientHud[10].glowAlpha = self.pers["ghud"]["glow_alpha"];
+		self.newClientHud[10].hidewheninmenu = true;
+		self.newClientHud[10] setShader("weapon_fraggrenade", 50, 50);
+		
+		self.newClientHud[11] = NewClientHudElem(self);
+		self.newClientHud[11].name = "granade_frag_val";
+		self.newClientHud[11].type = "text";
+		self.newClientHud[11].x = 840;
+		self.newClientHud[11].y = 465;
+		self.newClientHud[11].horzAlign = "left";
+		self.newClientHud[11].vertAlign = "top";
+		self.newClientHud[11].alignX = "left";
+		self.newClientHud[11].alignY = "middle";
+		self.newClientHud[11].alpha = self.pers["ghud"]["alpha"];
+		self.newClientHud[11].fontScale = 2;
+		self.newClientHud[11].font = "default";
+		self.newClientHud[11].sort = 2;
+		self.newClientHud[11].color = self.pers["ghud"]["color"];
+		self.newClientHud[11].glowColor = self.pers["ghud"]["glow_color"];
+		self.newClientHud[11].glowAlpha = self.pers["ghud"]["glow_alpha"];
+		self.newClientHud[11].hidewheninmenu = true;
+		self.newClientHud[11] setValue(0);
+	}
+}
+
+loadAllServerHud()
+{
+	//thread updateTime();
+	
+	level.newServerHud[0] = NewHudElem();
+	level.newServerHud[0].name = "onlinestatus";
+	level.newServerHud[0].type = "text";
+	level.newServerHud[0].x = 390;
+	level.newServerHud[0].y = 8;
+	level.newServerHud[0].horzAlign = "left";
+	level.newServerHud[0].vertAlign = "top";
+	level.newServerHud[0].alignX = "left";
+	level.newServerHud[0].alignY = "middle";
+	level.newServerHud[0].alpha = 1;
+	level.newServerHud[0].fontScale = 1.4;
+	level.newServerHud[0].color = (255, 255, 255);
+	level.newServerHud[0].glowColor = rgb(63,81,181);
+	level.newServerHud[0].glowAlpha = 0.5;
+	level.newServerHud[0].hidewheninmenu = true;
+	level.newServerHud[0].label = &"GREEN_ONLINESTATUS";
+	
+	level.newServerHud[1] = NewHudElem();
+	level.newServerHud[1].name = "time";
+	level.newServerHud[1].type = "text";
+	level.newServerHud[1].x = 330;
+	level.newServerHud[1].y = 8;
+	level.newServerHud[1].horzAlign = "left";
+	level.newServerHud[1].vertAlign = "top";
+	level.newServerHud[1].alignX = "left";
+	level.newServerHud[1].alignY = "middle";
+	level.newServerHud[1].alpha = 1;
+	level.newServerHud[1].fontScale = 1.4;
+	level.newServerHud[1].color = (255, 255, 255);//(255, 255, 255);
+	level.newServerHud[1].glowColor = rgb(63,81,181);
+	level.newServerHud[1].glowAlpha = 0.5;
+	level.newServerHud[1].hidewheninmenu = true;
+	level.newServerHud[1].label = &"GREEN_TIME";
+	
+	thread updateStatus();
+	thread updateTime();
+}
+
+updateStatus()
+{
+	id = ConfigstringId(0, 820, "GREEN_ONLINESTATUS");
+	count = game["groupsCount"]["all"].size;
+	
+	while(game["runGame"])
+	{
+		for(i = 0; i < count; i++)
+		{
+			players = getAllplayers();
+			SetConfigstring(id, "" + "Online(" + players.size + "/" + game["G_MAXPLAYERS"] + ") " + game["groupsCount"]["all"][i]["displayname"] + "s:  " + game["groupsCount"]["online"][i]["users_count"] + "/" + game["groupsCount"]["all"][i]["users_count"]);
+			wait(5);
+		}
+	}
+}
+
+updateTime()
+{
+	id = ConfigstringId(0, 820, "GREEN_TIME");
+	while(game["runGame"])
+	{
+		SetConfigstring(id, "" + date("%H:%M"));
+		wait(5);
+	}
+}
+
+updateClientAmmoAndGranade()
+{
+	while(game["runGame"])
+	{
+		wait(0.05);
+		if(!isAlive(self))
+			continue;
+		
+		self.gweapons["current_weapon"] = self GetCurrentWeapon();
+		self.gweapons["clip_ammo"] = self GetWeaponAmmoClip(self.gweapons["current_weapon"]);
+		self.gweapons["stock_ammo"] = self GetWeaponAmmoStock(self.gweapons["current_weapon"]);
+		self.gweapons["granade_frag"] = self GetWeaponAmmoClip("frag_grenade_mp");
+		self.gweapons["granade_flash"] = self GetWeaponAmmoClip("flash_grenade_mp");
+		self.gweapons["granade_smoke"] = self GetWeaponAmmoClip("smoke_grenade_mp");
+			
+		if(!(self IsOnLadder()) && !(self IsMantling()))
+		{
+			if(self.gweapons["granade_smoke"] > 0 && self.newClientHud[8].gshader != "weapon_smokegrenade")
+			{
+				self.newClientHud[8] setShader("weapon_smokegrenade", 45, 45);
+				self.newClientHud[8].gshader = "weapon_smokegrenade";
+			}
+			else if(self.newClientHud[8].gshader != "weapon_flashbang")
+			{
+				self.newClientHud[8] setShader("weapon_flashbang", 45, 45);
+				self.newClientHud[8].gshader = "weapon_flashbang";
+			}
+			self.newClientHud[9] setValue(self.gweapons["granade_flash"] + self.gweapons["granade_smoke"]);
+			self.newClientHud[11] setValue(self.gweapons["granade_frag"]);
+			
+			self.newClientHud[5] setValue(self.gweapons["clip_ammo"]);
+			self.newClientHud[6] setValue(self.gweapons["stock_ammo"]);
+		}
+	}
+}
+
+updateClientFpsHud()
+{
+	while(game["runGame"])
+	{
+		self.newClientHud[0] setValue(self getFps());
+		wait(1);
+	}
+}
+
+updateClientPingHud()
+{
+	while(game["runGame"])
+	{
+		self.newClientHud[1] setValue(self getPing());
+		wait(1);
+	}
+}
+
+updateClientStats()
+{
+	count = game["tableFileds"]["stats"].size;
+	while(game["runGame"])
+	{
+		for(i = 2; i < count; i++)
+		{
+			if(!game["runGame"])
+				break;
+			
+			key = explode(game["tableFileds"]["stats"][i], ":");
+			if(strCmp(key[0], "shotsfired") || strCmp(key[0], "hits") || strCmp(key[0], "playedtime"))
+				continue;
+			SetConfigstring((742 + self.pers["info"]["entnum"]),"" + SV_getLangString(self.pers["info"]["lang"], "STATISTIC_" + toUpper(key[0])) + self.pers["gstat"]["tmp"][key[0]] + "/" + self.pers["gstat"]["db"][key[0]]);
+			wait(5);
+		}
+		
+		if(!game["runGame"])
+				break;
+		
+		SetConfigstring((742 + self.pers["info"]["entnum"]),"" + SV_getLangString(self.pers["info"]["lang"], "STATISTIC_PLAYEDTIME") + int(self.pers["gstat"]["db"]["playedtime"]/60) + " Min");
+		wait(5);
+		
+		if(!game["runGame"])
+				break;
+		
+		if(!self.pers["gstat"]["db"]["kill"])
+			ratio = 1;
+		else
+			ratio = (int(self.pers["gstat"]["db"]["kill"] / self.pers["gstat"]["db"]["death"] * 100) / 100);
+		
+		SetConfigstring((742 + self.pers["info"]["entnum"]),"" + SV_getLangString(self.pers["info"]["lang"], "STATISTIC_RATIO") + ratio);
+		wait(5);
+	}
+}

@@ -1,0 +1,113 @@
+///==========================================///
+///    _____    _               _            ///
+///   |  __ \  (_)             | |           ///
+///   | |  | |  _    ___     __| |   __ _    ///
+///   | |  | | | |  / _ \   / _` |  / _` |   ///
+///   | |__| | | | | (_) | | (_| | | (_| |   ///
+///   |_____/  |_|  \___/   \__,_|  \__,_|   ///
+///                                          ///
+///           www.servergreen.eu             ///
+///                                          ///
+///==========================================///
+
+initWelcome()
+{
+		if(isSet(self.info["welcome_screen"]))
+			return;
+		
+		self.info["welcome_screen"] = true;
+		//self thread topText("Welcome " + self.name + "!");
+		self thread topText("Welcome!");
+		self thread bottomText("Wishes you a pleasant game to >Whispering Storm*!");
+		self thread webSite();
+}
+
+topText(text)
+{
+	self.hud["welcome_top"] = NewClientHudElem(self);
+	self.hud["welcome_top"].x = 0;
+	self.hud["welcome_top"].y = 380;
+	self.hud["welcome_top"].alignx = "center";
+	self.hud["welcome_top"].aligny = "middle";
+	self.hud["welcome_top"].horzAlign = "center";
+	self.hud["welcome_top"].vertAlign = "middle";
+	self.hud["welcome_top"].font = "objective";
+	self.hud["welcome_top"].fontScale = 2.2;
+	self.hud["welcome_top"].Color = level.info["hud"]["color"];
+	self.hud["welcome_top"].glowColor = level.info["hud"]["color"];
+	self.hud["welcome_top"].glowAlpha = (0.8);
+	self.hud["welcome_top"] setText(text);
+	self.hud["welcome_top"] SetPulseFX( 200, 18000, 150 );
+	
+	self thread moveY(-250, -80, "welcome_top", 1.2);
+	
+	self.hud["welcome_top"].alpha = 0;
+	self.hud["welcome_top"] FadeOverTime(1.2);
+	self.hud["welcome_top"].alpha = 1;
+	wait(3.5);
+	self moveX(0, -600, "welcome_top", 1.2);
+	
+	self.hud["welcome_top"] FadeOverTime(1.2);
+	self.hud["welcome_top"].alpha = 0;
+}
+
+bottomText(text)
+{
+	self.hud["welcome_bottom"] = NewClientHudElem(self);
+	self.hud["welcome_bottom"].x = 0;
+	self.hud["welcome_bottom"].y = 380;
+	self.hud["welcome_bottom"].alignx = "center";
+	self.hud["welcome_bottom"].aligny = "middle";
+	self.hud["welcome_bottom"].horzAlign = "center";
+	self.hud["welcome_bottom"].vertAlign = "middle";
+	self.hud["welcome_bottom"].font = "objective";
+	self.hud["welcome_bottom"].fontScale = 2.4;
+	self.hud["welcome_bottom"].Color = level.info["hud"]["color"];
+	self.hud["welcome_bottom"].glowColor = level.info["hud"]["color"];
+	self.hud["welcome_bottom"].glowAlpha = (0.8);
+	self.hud["welcome_bottom"] setText(text);
+	self.hud["welcome_bottom"] SetPulseFX( 80, 18000, 150 );
+	
+	self thread moveY(380, -40, "welcome_bottom", 1.2);
+	
+	self.hud["welcome_bottom"].alpha = 0;
+	self.hud["welcome_bottom"] FadeOverTime(1.2);
+	self.hud["welcome_bottom"].alpha = 1;
+	wait(5);
+	self moveX(0, 600, "welcome_bottom", 1.2);
+	
+	self.hud["welcome_bottom"] FadeOverTime(1.2);
+	self.hud["welcome_bottom"].alpha = 0;
+}
+
+webSite()
+{
+	self.hud["welcome_website"] = NewClientHudElem(self);
+	self.hud["welcome_website"].x = 150;
+	self.hud["welcome_website"].y = 220;
+	self.hud["welcome_website"].alignx = "center";
+	self.hud["welcome_website"].aligny = "middle";
+	self.hud["welcome_website"].horzAlign = "center";
+	self.hud["welcome_website"].vertAlign = "middle";
+	self.hud["welcome_website"].font = "objective";
+	self.hud["welcome_website"].fontScale = 1.6;
+	self.hud["welcome_website"].Color = (1, 1, 1);
+	self.hud["welcome_website"].glowColor = level.info["hud"]["color"];
+	self.hud["welcome_website"].glowAlpha = (0.8);
+	self.hud["welcome_website"] setText("^7www.server^2green^7.eu");
+	self.hud["welcome_website"] SetPulseFX( 150, 8000, 150 );
+}
+
+moveY(y1, y2, name, fade)
+{
+	self.hud[name].y = y1;
+	self.hud[name] MoveOverTime(fade);
+	self.hud[name].y = y2;
+}
+
+moveX(x1, x2, name, fade)
+{
+	self.hud[name].x = x1;
+	self.hud[name] MoveOverTime(fade);
+	self.hud[name].x = x2;
+}

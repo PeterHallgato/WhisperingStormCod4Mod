@@ -1,0 +1,295 @@
+///==========================================///
+///    _____    _               _            ///
+///   |  __ \  (_)             | |           ///
+///   | |  | |  _    ___     __| |   __ _    ///
+///   | |  | | | |  / _ \   / _` |  / _` |   ///
+///   | |__| | | | | (_) | | (_| | | (_| |   ///
+///   |_____/  |_|  \___/   \__,_|  \__,_|   ///
+///                                          ///
+///           www.servergreen.eu             ///
+///                                          ///
+///==========================================///
+
+initStatHud(cl)
+{
+	if(cl.pers["isBot"])
+		return;
+	
+	cl endon("disconnect");
+	
+	cl.hud["kdratio"] = NewClientHudElem(cl);
+	cl.hud["kdratio"].x = 3;
+	cl.hud["kdratio"].y = 420;
+	cl.hud["kdratio"].alignx = "left";
+	cl.hud["kdratio"].aligny = "top";
+	cl.hud["kdratio"].horzAlign = "fullscreen";
+	cl.hud["kdratio"].vertAlign = "fullscreen";
+	cl.hud["kdratio"].font = "default";
+	cl.hud["kdratio"].alpha = 0.85;
+	cl.hud["kdratio"].fontScale = 1.4;
+	cl.hud["kdratio"].Color = level.info["hud"]["color"];
+	cl.hud["kdratio"].glowColor = level.info["hud"]["glowcolor"];
+	cl.hud["kdratio"].glowAlpha = (0.2);
+	cl.hud["kdratio"].label = &"K/D Ratio: ^1&&1";
+	cl.hud["kdratio"].sort = 1;
+	cl.hud["kdratio"] setValue( cl.info["kdratio"] );
+	
+	cl.hud["accuracy"] = NewClientHudElem(cl);
+	cl.hud["accuracy"].x = 3;
+	cl.hud["accuracy"].y = 435;
+	cl.hud["accuracy"].alignx = "left";
+	cl.hud["accuracy"].aligny = "top";
+	cl.hud["accuracy"].horzAlign = "fullscreen";
+	cl.hud["accuracy"].vertAlign = "fullscreen";
+	cl.hud["accuracy"].font = "default";
+	cl.hud["accuracy"].alpha = 0.85;
+	cl.hud["accuracy"].fontScale = 1.4;
+	cl.hud["accuracy"].Color = level.info["hud"]["color"];
+	cl.hud["accuracy"].glowColor = level.info["hud"]["glowcolor"];
+	cl.hud["accuracy"].glowAlpha = (0.2);
+	cl.hud["accuracy"].label = &"Accuracy: ^1&&1";
+	cl.hud["accuracy"].sort = 1;
+	cl.hud["accuracy"] setValue( cl.info["accuracy"] );
+	
+	cl.hud["kills"] = NewClientHudElem(cl);
+	cl.hud["kills"].x = 3;
+	cl.hud["kills"].y = 450;
+	cl.hud["kills"].alignx = "left";
+	cl.hud["kills"].aligny = "top";
+	cl.hud["kills"].horzAlign = "fullscreen";
+	cl.hud["kills"].vertAlign = "fullscreen";
+	cl.hud["kills"].font = "default";
+	cl.hud["kills"].alpha = 0.85;
+	cl.hud["kills"].fontScale = 1.4;
+	cl.hud["kills"].Color = level.info["hud"]["color"];
+	cl.hud["kills"].glowColor = level.info["hud"]["glowcolor"];
+	cl.hud["kills"].glowAlpha = (0.2);
+	cl.hud["kills"].label = &"Kills: ^1&&1";
+	cl.hud["kills"].sort = 1;
+	cl.hud["kills"] setValue( cl.info["kills"] );
+	
+	cl.hud["deaths"] = NewClientHudElem(cl);
+	cl.hud["deaths"].x = 3;
+	cl.hud["deaths"].y = 465;
+	cl.hud["deaths"].alignx = "left";
+	cl.hud["deaths"].aligny = "top";
+	cl.hud["deaths"].horzAlign = "fullscreen";
+	cl.hud["deaths"].vertAlign = "fullscreen";
+	cl.hud["deaths"].font = "default";
+	cl.hud["deaths"].alpha = 0.85;
+	cl.hud["deaths"].fontScale = 1.4;
+	cl.hud["deaths"].Color = level.info["hud"]["color"];
+	cl.hud["deaths"].glowColor = level.info["hud"]["glowcolor"];
+	cl.hud["deaths"].glowAlpha = (0.2);
+	cl.hud["deaths"].label = &"Deaths: ^1&&1";
+	cl.hud["deaths"].sort = 1;
+	cl.hud["deaths"] setValue( cl.info["deaths"] );
+	
+	cl.hud["clipammo"] = NewClientHudElem(cl);
+	cl.hud["clipammo"].x = 550;
+	cl.hud["clipammo"].y = 450;
+	cl.hud["clipammo"].alignx = "left";
+	cl.hud["clipammo"].aligny = "top";
+	cl.hud["clipammo"].horzAlign = "fullscreen";
+	cl.hud["clipammo"].vertAlign = "fullscreen";
+	cl.hud["clipammo"].font = "objective";
+	cl.hud["clipammo"].alpha = 0.85;
+	cl.hud["clipammo"].fontScale = 1.5;
+	cl.hud["clipammo"].Color = level.info["hud"]["color"];
+	cl.hud["clipammo"].glowColor = level.info["hud"]["glowcolor"];
+	cl.hud["clipammo"].glowAlpha = (0.2);
+	cl.hud["clipammo"].sort = 1;
+	cl.hud["clipammo"] setValue( cl.info["clipammo"] );
+	
+	cl.hud["stockammo"] = NewClientHudElem(cl);
+	cl.hud["stockammo"].x = 567;
+	cl.hud["stockammo"].y = 450;
+	cl.hud["stockammo"].alignx = "left";
+	cl.hud["stockammo"].aligny = "top";
+	cl.hud["stockammo"].horzAlign = "fullscreen";
+	cl.hud["stockammo"].vertAlign = "fullscreen";
+	cl.hud["stockammo"].font = "objective";
+	cl.hud["stockammo"].alpha = 0.85;
+	cl.hud["stockammo"].fontScale = 1.5;
+	cl.hud["stockammo"].Color = level.info["hud"]["color"];
+	cl.hud["stockammo"].glowColor = level.info["hud"]["glowcolor"];
+	cl.hud["stockammo"].glowAlpha = (0.2);
+	cl.hud["stockammo"].label = &" | &&1";
+	cl.hud["stockammo"].sort = 1;
+	cl.hud["stockammo"] setValue( cl.info["stockammo"] );
+	
+	if(self getPower() != 100)
+	{
+		cl.hud["campbg"] = NewClientHudElem(cl);
+		cl.hud["campbg"].x = 3;
+		cl.hud["campbg"].y = 410;
+		cl.hud["campbg"].alignx = "left";
+		cl.hud["campbg"].aligny = "top";
+		cl.hud["campbg"].horzAlign = "fullscreen";
+		cl.hud["campbg"].vertAlign = "fullscreen";
+		cl.hud["campbg"].sort = 0;
+		cl.hud["campbg"].alpha = 0.7;
+		cl.hud["campbg"] setShader("black", 50, 10);
+	}
+	
+	cl.hud["ammobg"] = NewClientHudElem(cl);
+	cl.hud["ammobg"].x = 547;
+	cl.hud["ammobg"].y = 448;
+	cl.hud["ammobg"].alignx = "left";
+	cl.hud["ammobg"].aligny = "top";
+	cl.hud["ammobg"].horzAlign = "fullscreen";
+	cl.hud["ammobg"].vertAlign = "fullscreen";
+	cl.hud["ammobg"].sort = 0;
+	cl.hud["ammobg"].alpha = 0.45;
+	cl.hud["ammobg"] setShader("line_horizontal", 52, 32);
+	cl.hud["ammobg"].color = level.info["hud"]["color"];
+	
+	cl.hud["statbg"] = NewClientHudElem(cl);
+	cl.hud["statbg"].x = -60;
+	cl.hud["statbg"].y = 420;
+	cl.hud["statbg"].alignx = "left";
+	cl.hud["statbg"].aligny = "top";
+	cl.hud["statbg"].horzAlign = "fullscreen";
+	cl.hud["statbg"].vertAlign = "fullscreen";
+	cl.hud["statbg"].sort = 0;
+	cl.hud["statbg"].alpha = 0.45;
+	cl.hud["statbg"] setShader("line_horizontal", 120, 80);
+	cl.hud["statbg"].color = level.info["hud"]["color"];
+	
+	cl.hud["frag"][0] = NewClientHudElem(cl);
+	cl.hud["frag"][0].x = 585;
+	cl.hud["frag"][0].y = 463;
+	cl.hud["frag"][0].alignx = "left";
+	cl.hud["frag"][0].aligny = "top";
+	cl.hud["frag"][0].horzAlign = "fullscreen";
+	cl.hud["frag"][0].vertAlign = "fullscreen";
+	cl.hud["frag"][0].sort = 1;
+	cl.hud["frag"][0].alpha = 1;
+	cl.hud["frag"][0] setShader("weapon_fraggrenade", 15, 20);
+	
+	cl.hud["frag"][1] = NewClientHudElem(cl);
+	cl.hud["frag"][1].x = 580;
+	cl.hud["frag"][1].y = 463;
+	cl.hud["frag"][1].alignx = "left";
+	cl.hud["frag"][1].aligny = "top";
+	cl.hud["frag"][1].horzAlign = "fullscreen";
+	cl.hud["frag"][1].vertAlign = "fullscreen";
+	cl.hud["frag"][1].sort = 1;
+	cl.hud["frag"][1].alpha = 0.3;
+	cl.hud["frag"][1] setShader("weapon_fraggrenade", 15, 20);
+	
+	cl.hud["frag"][2] = NewClientHudElem(cl);
+	cl.hud["frag"][2].x = 575;
+	cl.hud["frag"][2].y = 463;
+	cl.hud["frag"][2].alignx = "left";
+	cl.hud["frag"][2].aligny = "top";
+	cl.hud["frag"][2].horzAlign = "fullscreen";
+	cl.hud["frag"][2].vertAlign = "fullscreen";
+	cl.hud["frag"][2].sort = 1;
+	cl.hud["frag"][2].alpha = 0.3;
+	cl.hud["frag"][2] setShader("weapon_fraggrenade", 15, 20);
+	
+	cl.hud["frag"][3] = NewClientHudElem(cl);
+	cl.hud["frag"][3].x = 570;
+	cl.hud["frag"][3].y = 463;
+	cl.hud["frag"][3].alignx = "left";
+	cl.hud["frag"][3].aligny = "top";
+	cl.hud["frag"][3].horzAlign = "fullscreen";
+	cl.hud["frag"][3].vertAlign = "fullscreen";
+	cl.hud["frag"][3].sort = 1;
+	cl.hud["frag"][3].alpha = 0.3;
+	cl.hud["frag"][3] setShader("weapon_fraggrenade", 15, 20);
+	
+	cl.hud["specialg"][0] = NewClientHudElem(cl);
+	cl.hud["specialg"][0].x = 560;
+	cl.hud["specialg"][0].y = 464;
+	cl.hud["specialg"][0].alignx = "left";
+	cl.hud["specialg"][0].aligny = "top";
+	cl.hud["specialg"][0].horzAlign = "fullscreen";
+	cl.hud["specialg"][0].vertAlign = "fullscreen";
+	cl.hud["specialg"][0].sort = 1;
+	cl.hud["specialg"][0].alpha = 1;
+	
+	cl.hud["specialg"][1] = NewClientHudElem(cl);
+	cl.hud["specialg"][1].x = 555;
+	cl.hud["specialg"][1].y = 464;
+	cl.hud["specialg"][1].alignx = "left";
+	cl.hud["specialg"][1].aligny = "top";
+	cl.hud["specialg"][1].horzAlign = "fullscreen";
+	cl.hud["specialg"][1].vertAlign = "fullscreen";
+	cl.hud["specialg"][1].sort = 1;
+	cl.hud["specialg"][1].alpha = 0.2;
+	
+	cl.hud["specialg"][2] = NewClientHudElem(cl);
+	cl.hud["specialg"][2].x = 550;
+	cl.hud["specialg"][2].y = 464;
+	cl.hud["specialg"][2].alignx = "left";
+	cl.hud["specialg"][2].aligny = "top";
+	cl.hud["specialg"][2].horzAlign = "fullscreen";
+	cl.hud["specialg"][2].vertAlign = "fullscreen";
+	cl.hud["specialg"][2].sort = 1;
+	cl.hud["specialg"][2].alpha = 0.2;
+	
+	cl.hud["specialg"][3] = NewClientHudElem(cl);
+	cl.hud["specialg"][3].x = 545;
+	cl.hud["specialg"][3].y = 464;
+	cl.hud["specialg"][3].alignx = "left";
+	cl.hud["specialg"][3].aligny = "top";
+	cl.hud["specialg"][3].horzAlign = "fullscreen";
+	cl.hud["specialg"][3].vertAlign = "fullscreen";
+	cl.hud["specialg"][3].sort = 1;
+	cl.hud["specialg"][3].alpha = 0.2;
+	
+	cl.hud["amsg_bg"] = NewClientHudElem(cl);
+	cl.hud["amsg_bg"].y = 180;
+	cl.hud["amsg_bg"].alignx = "right";
+	cl.hud["amsg_bg"].aligny = "top";
+	cl.hud["amsg_bg"].horzAlign = "fullscreen";
+	cl.hud["amsg_bg"].vertAlign = "fullscreen";
+	cl.hud["amsg_bg"].sort = 0;
+	cl.hud["amsg_bg"].alpha = 1;
+	cl.hud["amsg_bg"] setShader("line_vertical", 80, 32);
+	cl.hud["amsg_bg"].color = (0,0,0);
+	
+	cl.hud["amsg_text"] = NewClientHudElem(cl);
+	cl.hud["amsg_text"].y = 186;
+	cl.hud["amsg_text"].alignx = "right";
+	cl.hud["amsg_text"].aligny = "top";
+	cl.hud["amsg_text"].horzAlign = "fullscreen";
+	cl.hud["amsg_text"].vertAlign = "fullscreen";
+	cl.hud["amsg_text"].font = "objective";
+	cl.hud["amsg_text"].alpha = 1;
+	cl.hud["amsg_text"].fontScale = 1.5;
+	cl.hud["amsg_text"].Color = level.info["hud"]["color"];
+	cl.hud["amsg_text"].glowColor = level.info["hud"]["glowcolor"];
+	cl.hud["amsg_text"].glowAlpha = (0.2);
+	cl.hud["amsg_text"].sort = 1;
+}
+
+amsg(text)
+{
+	self endon("disconnect");
+	self.hud["amsg_text"] setText(text);
+	self thread move_bg();
+	self move_text();
+}
+
+move_bg()
+{
+	self.hud["amsg_bg"].x = 780;
+	self.hud["amsg_bg"] MoveOverTime(0.6);
+	self.hud["amsg_bg"].x = 640;
+	wait 5;
+	self.hud["amsg_bg"] MoveOverTime(0.4);
+	self.hud["amsg_bg"].x = 780;
+}
+
+move_text()
+{
+	self.hud["amsg_text"].x = 780;
+	self.hud["amsg_text"] MoveOverTime(0.6);
+	self.hud["amsg_text"].x = 640;
+	wait 5;
+	self.hud["amsg_text"] MoveOverTime(0.4);
+	self.hud["amsg_text"].x = 780;
+}

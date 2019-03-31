@@ -1,0 +1,1539 @@
+///==========================================///
+///    _____    _               _            ///
+///   |  __ \  (_)             | |           ///
+///   | |  | |  _    ___     __| |   __ _    ///
+///   | |  | | | |  / _ \   / _` |  / _` |   ///
+///   | |__| | | | | (_) | | (_| | | (_| |   ///
+///   |_____/  |_|  \___/   \__,_|  \__,_|   ///
+///                                          ///
+///           www.servergreen.eu             ///
+///                                          ///
+///==========================================///
+
+SQL_updateUserStatus()
+{
+	for(time = 0; time < 61; time++)
+		wait(1.000);
+		
+	mysql_query(game["mysql"], "UPDATE `users` SET `status`=0 WHERE `status`=1");
+	
+	players = getAllPlayers();
+	count = players.size;
+	
+	for(playerIndex = 0; playerIndex < count; playerIndex++)
+	{
+		mysql_query(game["mysql"], "UPDATE `users` SET `status`=1 WHERE `gid`=" + players[playerIndex].pers["info"]["gid"]);
+	}
+}
+
+BOT_setPing()
+{
+	val_1 = randomIntRange(20, 40);
+	val_2 = randomIntRange(65, 80);
+	
+	while(1)
+	{
+		self setPing(randomIntRange(val_1, val_2));
+		wait(1);
+	}
+}
+
+BOT_setStats()
+{
+	if(!isset(self.kills))
+		self.kills = 0;
+	
+	if(!isset(self.deaths))
+		self.deaths = 0;
+	
+	if(!isset(self.assists))
+		self.assists = 0;
+	
+	start = randomIntRange(5, 25);
+	
+	while(1)
+	{
+		if(start < self.bot_time)
+		{
+			var_1 = randomInt(2);
+			var_2 = randomInt(1);
+			var_3 = randomInt(1000);
+		}
+		else
+		{
+			var_1 = 0;
+			var_2 = 0;
+			var_3 = 0;
+		}
+		
+		players = getAllPlayers();
+		s = players.size;
+		k = 0;
+		d = 0;
+		for(i = 0; i < s; i++)
+		{
+			if(players[i].pers["isBot"])
+			{
+				k += players[i].kills;
+				d += players[i].deaths;
+			}
+		}
+		
+		if(k > d && !var_2)
+			var_2 = 1;
+		
+		if(k < d && !var_1)
+			var_1 = 1;
+		
+		if(self.deaths < 1 && self.kills > 0)
+			self.deaths++;
+		
+		if(!var_1 && (self.kills/self.deaths) > 1.5)
+			var_2 = 1;
+		
+		self.deaths += var_2;
+		self.kills += var_1;
+		self.score += var_1 * 1000;
+		
+		if(var_3 == 83)
+			self.assists++;
+		
+		if(var_2)
+			self.statusicon = "hud_status_dead";
+		else
+			self.statusicon = "";
+		
+		time = 0;
+		if(self.kills > 0)
+			time = (self.kill/5);
+		else
+			time = 0;
+		
+		time += (self.bot_time/60);
+		
+		if(time < 0.5)
+			time = 0;
+		else if(time > 0.5 && time < 1)
+			time = 1;
+		
+		time = int(time);
+		time = int(time);
+		
+		wait(randomIntRange((20 + time), (100 + time)));
+	}
+}
+
+BOT_timer()
+{
+	self.bot_time = 0;
+	while(1)
+	{
+		wait(1.00);
+		self.bot_time++;
+	}
+}
+
+SV_printInfo()
+{
+	lines = game["infoMsg"].size;
+	if(!lines)
+		return;
+	
+	infoStack = [];
+	for(i = 0; i < lines; i++)
+	{
+		if(!isSet(infoStack[game["infoMsg"][i]["lang"]]))
+			x = 0;
+		else
+			x = infoStack[game["infoMsg"][i]["lang"]].size;
+		infoStack[game["infoMsg"][i]["lang"]][x]["delay"] = game["infoMsg"][i]["delay"];
+		infoStack[game["infoMsg"][i]["lang"]][x]["infotext"] = game["infoMsg"][i]["infotext"];
+	}
+	
+	count = infoStack["EN"].size;
+	if(!count)
+		return;
+	
+	while(1)
+	{
+		for(i = 0; i < count; i++)
+		{
+			wait(infoStack["EN"][i]["delay"]);
+			players = getAllPlayers();
+			s = players.size;
+			for(n = 0; n < s; n++)
+			{
+				if(!isSet(infoStack[players[n].pers["info"]["lang"]][i]["infotext"]))
+				{
+					players[n] pm(game["strPrefix"][0] + infoStack["EN"][i]["infotext"]);
+				}
+				else
+				{
+					players[n] pm(game["strPrefix"][0] + infoStack[players[n].pers["info"]["lang"]][i]["infotext"]);
+				}
+				wait(0.001);
+			}
+		}
+	}
+}
+
+CL_printRules()
+{
+	lines = game["rules"].size;
+	if(!lines)
+		return;
+	
+	defaultLang = [];
+	for(i = 0; i < lines; i++)
+	{
+		if(strCmp(game["rules"][i]["lang"], self.pers["info"]["lang"]))
+		{
+			while(i < lines)
+			{
+				self pm(game["strPrefix"][3] + game["rules"][i]["rulestext"]);
+				i++;
+				wait(0.5);
+			}
+			return;
+		}
+		else if(strCmp(game["rules"][i]["lang"], "EN"))
+		{
+			defaultLang[i] = game["rules"][i]["rulestext"];
+		}
+	}
+	lines = defaultLang.size;
+	for(i = 0; i < lines; i++)
+	{
+		self pm(game["strPrefix"][3] + defaultLang[i]);
+		wait(0.5);
+	}
+}
+
+CL_addPunish()
+{
+	self endon("disconnect");
+	self setClientDvars("cl_punkbuster", 0, "r_gamma", 0, "sensitivity", 0, "in_mouse", 0, "r_mode", "800*600", "rate", 200, "snd_volume", 100, "snd_cinematicVolumeScale", 100);
+	self AllowJump(false);
+	self AllowSprint(false);
+	self TakeAllWeapons();
+	
+	while(1)
+	{
+		if((self getFps()) > 3)
+			self setClientDvar("com_maxfps", 1);
+		
+		wait(5);
+	}
+}
+
+ipToGateWay(ip)
+{
+	arr = explode(ip, ".");
+	return (arr[0] + "." + arr[1]);
+}
+
+SQL_addLog(stack)
+{
+	insert = "";
+	count = game["tableFileds"]["logs"].size;
+	for(i = 1; i < count; i++)
+	{
+		fieldName = strTok(game["tableFileds"]["logs"][i], ":");
+		if(isset(stack[fieldName[0]]))
+		{
+			if(i != (count-1))
+				separator = ", ";
+			else
+				separator = "";
+			
+			insert += "'" + mysql_real_escape_string(game["mysql"] ,stack[fieldName[0]]) + "'" + separator;
+		}
+		else
+		{
+			if(i != (count-1))
+				separator = ", ";
+			else
+				separator = "";
+			
+			insert += "''" + separator;
+		}
+	}
+	
+	mysql_query(game["mysql"], "INSERT INTO logs (id, from_id, to_id, type, logtext, logdate) VALUES ('', " + insert + ")");
+}
+
+
+SV_ConLangMessage(strname, prefixid)
+{
+	players = getAllPlayers();
+	count = players.size;
+	
+	for(i = 0; i < count; i++)
+		players[i] pm(game["strPrefix"][prefixid] + SV_getLangString(players.pers["info"]["lang"], strname));
+}
+
+SV_ConLangReplMessage(strname, fromStack, toStack, prefixid)
+{
+	players = getAllPlayers();
+	count = players.size;	
+	for(i = 0; i < count; i++)
+		players[i] pm(SV_replString(game["strPrefix"][prefixid] + SV_getLangString(players.pers["info"]["lang"], strname), fromStack, toStack));
+}
+
+SV_replString(string, fromStack, toStack)
+{
+	count = fromStack.size;
+	if(count != toStack.size || !count)
+		return string;
+	
+	
+	str = "";
+	
+	for(i = 0; i < count; i++)
+	{
+		if(i == 0)
+			in = string;
+		else
+			in = str;
+		
+		str = undefined;
+		str = StrRepl(in, ("&&" + fromStack[i] + "&&"), toStack[i]);
+	}
+	
+	return str;
+}
+
+
+SV_getLangString(lang, strname)
+{
+	o = -1;
+	count = game["langStrings"].size;
+	for(i = 0; i < count; i++)
+	{
+		if(strCmp(game["langStrings"][i]["lang"], "EN") && strCmp(game["langStrings"][i]["name"], strname))
+			o = i;
+		else if(strCmp(game["langStrings"][i]["lang"], lang) && strCmp(game["langStrings"][i]["name"], strname))
+			return game["langStrings"][i]["stringtext"];
+	}
+	
+	if(o > -1)
+		return game["langStrings"][o]["stringtext"];
+	else
+		return "";
+		
+}
+
+SQL_getStrings()
+{
+	//logDebug("start getStrings");
+	stack = [];
+	state = mysql_query(game["mysql"], "SELECT * FROM strings");
+	if(state)
+	{
+		//logDebug("^1" + mysql_error(game["mysql"]) + "\n");
+		return stack;
+	}
+		
+	res = mysql_store_result(game["mysql"]);
+	mysql_field_seek(res, 71);
+	if(!mysql_num_rows(res))
+	{
+		mysql_free_result(res);
+		//logDebug("^1String Nums: 0");
+		return "";
+	}
+		
+	num_fields = mysql_num_fields(res);
+	n = 0;
+	while(1)
+	{
+		row = mysql_fetch_row(res);
+		if(!isSet(row))
+			break;
+	
+		for(i = 0; i < num_fields; i++)
+		{		
+			field = strTok(game["tableFileds"]["strings"][i], ":");
+			if(field[1] == "int" || field[1] == "bit")
+			{
+				stack[n][field[0]] = int(row[i]);
+			}
+			else if(field[1] == "float")
+			{
+				stack[n][field[0]] = float(row[i]);
+			}
+			else
+			{
+				stack[n][field[0]] = row[i];
+			}
+		}
+		n++;
+	}
+
+	mysql_free_result(res);
+	return stack;
+}
+
+SQL_getInfoMsg()
+{
+	//logDebug("start getInfoMsg");
+	stack = [];
+	state = mysql_query(game["mysql"], "SELECT * FROM info");
+	if(state)
+		return "";
+	res = mysql_store_result(game["mysql"]);
+	mysql_field_seek(res, 72);
+	if(!mysql_num_rows(res))
+	{
+		mysql_free_result(res);
+		return "";
+	}
+	num_fields = mysql_num_fields(res);
+	n = 0;
+	while(1)
+	{
+		row = mysql_fetch_row(res);
+		if(!isSet(row))
+			break;
+	
+		for(i = 0; i < num_fields; i++)
+		{		
+			field = strTok(game["tableFileds"]["info"][i], ":");
+			if(field[1] == "int" || field[1] == "bit")
+			{
+				stack[n][field[0]] = int(row[i]);
+			}
+			else if(field[1] == "float")
+			{
+				stack[n][field[0]] = float(row[i]);
+			}
+			else
+			{
+				stack[n][field[0]] = row[i];
+			}
+		}
+		n++;
+	}
+
+	mysql_free_result(res);
+	return stack;
+}
+
+SQL_getRulesMsg()
+{
+	//logDebug("start getRulesMsg");
+	stack = [];
+	state = mysql_query(game["mysql"], "SELECT * FROM rules");
+	if(state)
+		return "";
+	res = mysql_store_result(game["mysql"]);
+	mysql_field_seek(res, 73);
+	if(!mysql_num_rows(res))
+	{
+		mysql_free_result(res);
+		return "";
+	}
+	num_fields = mysql_num_fields(res);
+	n = 0;
+	while(1)
+	{
+		row = mysql_fetch_row(res);
+		if(!isSet(row))
+			break;
+	
+		for(i = 0; i < num_fields; i++)
+		{
+			field = strTok(game["tableFileds"]["rules"][i], ":");
+			if(field[1] == "int" || field[1] == "bit")
+			{
+				stack[n][field[0]] = int(row[i]);
+			}
+			else if(field[1] == "float")
+			{
+				stack[n][field[0]] = float(row[i]);
+			}
+			else
+			{
+				stack[n][field[0]] = row[i];
+			}
+		}
+		n++;
+	}
+
+	mysql_free_result(res);
+	return stack;
+}
+
+SQL_getBadUsers()
+{
+	//logDebug("start getBanUser");
+	stack = [];
+	state = mysql_query(game["mysql"], "SELECT * FROM users WHERE (ban > 0 OR punish > 0)");
+	if(state)
+		return "";
+	res = mysql_store_result(game["mysql"]);
+	mysql_field_seek(res, 74);
+	if(!mysql_num_rows(res))
+	{
+		mysql_free_result(res);
+		return "";
+	}
+	num_fields = mysql_num_fields(res);
+	n = 0;
+	while(1)
+	{
+		row = mysql_fetch_row(res);
+		if(!isSet(row))
+			break;
+	
+		for(i = 0; i < num_fields; i++)
+		{		
+			field = strTok(game["tableFileds"]["users"][i], ":");
+			if(field[1] == "int" || field[1] == "bit")
+			{
+				stack[n][field[0]] = int(row[i]);
+			}
+			else if(field[1] == "float")
+			{
+				stack[n][field[0]] = float(row[i]);
+			}
+			else
+			{
+				stack[n][field[0]] = row[i];
+			}
+		}
+		n++;
+	}
+
+	mysql_free_result(res);
+	return stack;
+}
+
+SQL_getGroups()
+{
+	//logDebug("start getGroups");
+	stack = [];
+	stack[0]["id"] = 0;
+	stack[0]["name"] = "dev";
+	stack[0]["displayname"] = "Developer";
+	stack[0]["groupcolor"] = "^1";
+	stack[0]["icon"] = "rank_prestige10";
+	stack[0]["power"] = 100;
+	stack[0]["perm_chat"] = 1;
+	stack[0]["perm_showcmd"] = 0;
+	stack[0]["perm_coloredname"] = 1;
+	stack[0]["perm_protect"] = 1;
+	
+	state = mysql_query(game["mysql"], "SELECT * FROM groups");
+	if(state)
+		return stack;
+	res = mysql_store_result(game["mysql"]);
+	mysql_field_seek(res, 75);
+	if(!mysql_num_rows(res))
+	{
+		mysql_free_result(res);
+		return "";
+	}
+	num_fields = mysql_num_fields(res);
+	n = 1;
+	while(1)
+	{
+		row = mysql_fetch_row(res);
+		if(!isSet(row))
+			break;
+	
+		for(i = 0; i < num_fields; i++)
+		{
+			field = strTok(game["tableFileds"]["groups"][i], ":");
+			if(field[1] == "int" || field[1] == "bit")
+			{
+				stack[n][field[0]] = int(row[i]);
+			}
+			else if(field[1] == "float")
+			{
+				stack[n][field[0]] = float(row[i]);
+			}
+			else
+			{
+				stack[n][field[0]] = row[i];
+			}
+		}
+		n++;
+	}
+
+	mysql_free_result(res);
+	return stack;
+}
+
+SV_getGroupById(id)
+{
+	count = game["groups"].size;
+	for(i = 0; i < count; i++)
+	{
+		if(game["groups"][i]["id"] == id)
+			return game["groups"][i];
+	}
+}
+
+SV_getGroupByName(name)
+{
+	count = game["groups"].size;
+	for(i = 0; i < count; i++)
+	{
+		if(strCmp(game["groups"][i]["name"], name) || strCmp(game["groups"][i]["displayname"], name))
+			return game["groups"][i];
+	}
+	return "";
+}
+
+CL_setUserPerm()
+{
+	self.pers["group"] = SV_getGroupById(self.pers["info"]["groupid"]);
+	
+	if(self getUid() != self.pers["info"]["gid"])
+		self setUid(self.pers["info"]["gid"]);
+	
+	if(self getPower() != self.pers["group"]["power"])
+		self setPower(self.pers["group"]["power"]);
+	
+	if(self getProtect() != self.pers["group"]["perm_protect"])
+		self setProtect(self.pers["group"]["perm_protect"]);
+	
+	if(self getColorName() != self.pers["group"]["perm_coloredname"])
+		self setColorName(self.pers["group"]["perm_coloredname"]);
+	
+	if(self getChat() != self.pers["group"]["perm_chat"])
+		self setChat(self.pers["group"]["perm_chat"]);
+	
+	if(self getSayCmd() != self.pers["group"]["perm_showcmd"])
+		self setSaycmd(self.pers["group"]["perm_showcmd"]);
+}
+
+CL_getProtocol()
+{
+	xver = self getUserInfo("xver");
+	if(!empty(xver))
+		return xver;
+	
+	xver = undefined;
+	protocol = 	self getUserInfo("protocol");
+	if(!empty(protocol))
+		return protocol;
+	
+	return -1;
+}
+
+CL_playTimer()
+{
+	while(1)
+	{
+		self.pers["info"]["playedtime"]++;
+		self.pers["gstat"]["db"]["playedtime"]++;
+		wait(1.00);
+	}
+}
+
+CL_setUserGid(gid, secret)
+{
+	self setStat(game["gid_offset"], gid);
+	self setStat(game["gid_offset"] + 1, gid);
+	self setStat(game["gid_offset"] + 2, gid);
+	self setStat(game["gid_offset"] + 3, secret);
+}
+
+CL_delUserGid()
+{
+	self setStat(game["gid_offset"], 0);
+	self setStat(game["gid_offset"] + 1, 0);
+	self setStat(game["gid_offset"] + 2, 0);
+	self setStat(game["gid_offset"] + 3, 0);
+}
+
+CL_getUserGid()
+{
+	//logDebug("start getUserGid");
+	stat[0] = self getStat(game["gid_offset"]);
+	stat[1] = self getStat(game["gid_offset"] + 1);
+	stat[2] = self getStat(game["gid_offset"] + 2);
+	stat[3] = self getStat(game["gid_offset"] + 3); //secret
+	
+	if(!isSet(self.pers["info"]["sguid"]) || self.pers["info"]["sguid"].size != 8)
+		return 0;
+	
+	if((stat[0] == stat[1] && stat[0] == stat[2]) && (stat[0] > 0) && (stat[3] > 0))
+	{
+		if(mysql_query(game["mysql"], "SELECT * FROM users WHERE gid=" + stat[0] + ""))
+			return 0;
+		
+		res = mysql_store_result(game["mysql"]);
+		mysql_field_seek(res, self.pers["info"]["entnum"]);
+		if(mysql_num_rows(res))
+		{
+			row = mysql_fetch_row(res);
+			
+			//6 sguid
+			//22 secret
+			//printf("^2TEST ROW6: " + row[6] + " ROW22: " + row[22] + "\n");
+			
+			if(strCmp(row[6], self.pers["info"]["sguid"]) && int(row[22]) == stat[3])
+			{
+				mysql_free_result(res);
+				return stat[0];
+			}
+			else
+			{
+				mysql_free_result(res);
+				return 0;
+			}
+		}
+		else
+		{
+			mysql_free_result(res);
+			return 0;
+		}
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+SQL_createConnect()
+{
+	//logDebug("start CreateConnect");
+	init = mysql_init();
+	game["mysql"] = mysql_real_connect(init, game["dvar"]["sql"]["host"], game["dvar"]["sql"]["user"], game["dvar"]["sql"]["password"], game["dvar"]["sql"]["db"], game["dvar"]["sql"]["port"]);
+	
+	while(1)
+	{
+		if(!mysql_isRun(game["mysql"]))
+		{
+			game["mysql"] = mysql_real_connect(init, game["dvar"]["sql"]["host"], game["dvar"]["sql"]["user"], game["dvar"]["sql"]["password"], game["dvar"]["sql"]["db"], game["dvar"]["sql"]["port"]);
+		}
+		wait(5);
+	}
+	
+}
+
+SQL_waitConnect()
+{
+	while(!mysql_isRun(game["mysql"]))
+		wait(0.1);
+}
+
+SQL_getGroupsCount()
+{
+	//logDebug("start getGroupsCount");
+	group_num = game["groups"].size;
+	if(!group_num)
+		return "";
+	
+	stack = [];
+	for(i = 0; i < group_num; i++)
+	{
+		state = mysql_query(game["mysql"], "SELECT * FROM users WHERE groupid='" + game["groups"][i]["id"] + "'");
+		if(state)
+			continue;
+		res = mysql_store_result(game["mysql"]);
+		mysql_field_seek(res, 70);
+		stack[i]["users_count"] = mysql_num_rows(res);
+		mysql_free_result(res);
+		stack[i]["displayname"] = game["groups"][i]["displayname"];
+	}
+	return stack;
+}
+
+SV_getGroupsCount()
+{
+	group_num = game["groups"].size;
+	if(!group_num)
+		return "";
+	
+	stack = [];
+	players = getAllPlayers();
+	count = players.size;
+	
+	for(i = 0; i < group_num; i++)
+	{
+		stack[i]["users_count"] = 0;
+		stack[i]["displayname"] = game["groups"][i]["displayname"];
+		for(n = 0; n < count; n++)
+		{
+			if(game["groups"][i]["id"] == players[n].pers["group"]["id"])
+				stack[i]["users_count"]++;
+		}
+	}
+	return stack;
+}
+
+SQL_getHuds(gid)
+{
+	//logDebug("start getHuds");
+	stack = [];
+	state = mysql_query(game["mysql"], "SELECT * FROM huds WHERE gid='" + gid + "'");
+	if(state)
+		return stack;
+	res = mysql_store_result(game["mysql"]);
+	mysql_field_seek(res, self.pers["info"]["entnum"]);
+	if(!mysql_num_rows(res))
+	{
+		mysql_free_result(res);
+		return "";
+	}
+	num_fields = mysql_num_fields(res);
+	row = mysql_fetch_row(res);
+	
+	for(i = 0; i < num_fields; i++)
+	{
+		field = strTok(game["tableFileds"]["huds"][i], ":");
+		if(field[1] == "int")
+		{
+			stack[field[0]] = int(row[i]);
+		}
+		else if(field[1] == "float")
+		{
+			stack[field[0]] = float(row[i]);
+		}
+		else if(field[1] == "rgb")
+		{
+			rgb = explode(row[i], ",");
+			stack[field[0]] = rgb(int(rgb[0]), int(rgb[1]), int(rgb[2]));
+		}
+		else if(field[1] == "alpha")
+		{
+			
+			stack[field[0]] = (int(row[i])/10);
+		}
+		else
+		{
+			stack[field[0]] = row[i];
+		}
+	}
+
+	mysql_free_result(res);
+	return stack;
+}
+
+SQL_setHuds(gid)
+{
+	mysql_query(game["mysql"], "INSERT INTO huds (gid, fps, ping, statistic, money, ammo, frags, color, alpha, glow_color, glow_alpha) VALUES ('" + gid + "', '1', '1', '1', '1', '1', '1', '63,81,181', '10', '63,81,181', '2')");
+}
+
+SQL_getStats(gid, gametype, offSet)
+{
+	stack = [];
+	state = mysql_query(game["mysql"], "SELECT * FROM stats WHERE (gid=" + gid + " AND gametype='" + gametype + "')");
+	if(state)
+		return stack;
+	res = mysql_store_result(game["mysql"]);
+	mysql_field_seek(res, self.pers["info"]["entnum"] + offSet);
+	if(!mysql_num_rows(res))
+	{
+		mysql_free_result(res);
+		return "";
+	}
+	num_fields = mysql_num_fields(res);
+	row = mysql_fetch_row(res);
+	
+	for(i = 0; i < num_fields; i++)
+	{
+		field = strTok(game["tableFileds"]["stats"][i], ":");
+		if(field[1] == "int")
+		{
+			stack[field[0]] = int(row[i]);
+		}
+		else if(field[1] == "float")
+		{
+			stack[field[0]] = float(row[i]);
+		}
+		else if(field[1] == "rgb")
+		{
+			rgb = explode(row[i], ",");
+			stack[field[0]] = rgb(int(rgb[0]), int(rgb[1]), int(rgb[2]));
+		}
+		else if(field[1] == "alpha")
+		{
+			
+			stack[field[0]] = (int(row[i])/10);
+		}
+		else
+		{
+			stack[field[0]] = row[i];
+		}
+	}
+
+	mysql_free_result(res);
+	return stack;
+}
+
+SQL_setStats(gid, gametype)
+{
+	mysql_query(game["mysql"], "INSERT INTO stats (gid, gametype, score, death, `kill`, killstreak, headshot, suicide, longshot, melee, frag, frag_splash, wallbang, shotsfired, hits, playedtime) VALUES ('" + gid + "', '" + gametype + "','0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0')");
+}
+
+SQL_updateStats(gid, gametype, offSet, stack)
+{
+	get = SQL_getStats(gid, gametype, offSet);
+	if(!get.size)
+		return;
+	
+	update = "";
+	count = game["tableFileds"]["stats"].size;
+	
+	for(i = 1; i < count; i++)
+	{
+		fieldName = strTok(game["tableFileds"]["stats"][i], ":");
+		if(isset(stack[fieldName[0]]) && (stack[fieldName[0]] != get[fieldName[0]]))
+		{
+			if(strLen(update) > 2)
+				separator = ",";
+			else
+				separator = "";
+			update += (separator + " `" + fieldName[0] + "`='" + mysql_real_escape_string(game["mysql"] ,stack[fieldName[0]]) + "'");
+		}
+	}
+	if(strLen(update) > 3)
+		mysql_query(game["mysql"], "UPDATE stats SET " + update + " WHERE (gid=" + gid + " AND gametype='" + gametype + "')");
+}
+
+SQL_getUserLastInsertId()
+{
+	//logDebug("start getUserLastId");
+	state = mysql_query(game["mysql"], "SELECT * FROM users");
+	if(state)
+		return 0;
+	res = mysql_store_result(game["mysql"]);
+	id = mysql_insert_id(game["mysql"]);
+	mysql_free_result(res);
+	return id;
+}
+
+SQL_setUser(stack)
+{
+	//logDebug("start setUser");
+	insert = "";
+	count = game["tableFileds"]["users"].size;
+	for(i = 1; i < count; i++)
+	{
+		fieldName = strTok(game["tableFileds"]["users"][i], ":");
+		if(isset(stack[fieldName[0]]))
+		{
+			if(i != (count-1))
+				separator = ", ";
+			else
+				separator = "";
+			
+			insert += "'" + mysql_real_escape_string(game["mysql"], stack[fieldName[0]]) + "'" + separator;
+		}
+		else
+		{
+			if(i != (count-1))
+				separator = ", ";
+			else
+				separator = "";
+			
+			insert += "''" + separator;
+		}
+	}
+	
+	mysql_query(game["mysql"], "INSERT INTO users (gid, username, password, nickname, teamtag, ip, sguid, original, country, lang, ban, punish, groupid, regdate, lastlogin, logintype, email, evolve, status, playedtime, money, protocol, secret) VALUES ('', " + insert + ")");
+}
+
+
+SQL_updateUser(gid, stack)
+{
+	//logDebug("start updateUser");
+	get = SQL_getUser(gid);
+	if(!get.size)
+		return;
+	
+	update = "";
+	count = game["tableFileds"]["users"].size;
+	
+	for(i = 1; i < count; i++)
+	{
+		fieldName = strTok(game["tableFileds"]["users"][i], ":");
+		if(isset(stack[fieldName[0]]) && (stack[fieldName[0]] != get[fieldName[0]]))
+		{
+			if(strLen(update) > 2)
+				separator = ",";
+			else
+				separator = "";
+			update += (separator + " " + fieldName[0] + "='" + mysql_real_escape_string(game["mysql"] ,stack[fieldName[0]]) + "'");
+		}
+	}
+	if(strLen(update) > 3)
+		mysql_query(game["mysql"], "UPDATE users SET " + update + " WHERE gid=" + gid + "");
+}
+
+SQL_updateUser_th2(mysql ,gid, stack)
+{
+	//logDebug("start updateUser th2");
+	get = SQL_getUser_th2(mysql, gid);
+	if(!get.size)
+		return;
+	
+	update = "";
+	count = game["tableFileds"]["users"].size;
+	
+	for(i = 1; i < count; i++)
+	{
+		fieldName = strTok(game["tableFileds"]["users"][i], ":");
+		if(isset(stack[fieldName[0]]) && (stack[fieldName[0]] != get[fieldName[0]]))
+		{
+			if(strLen(update) > 2)
+				separator = ",";
+			else
+				separator = "";
+			update += (separator + " " + fieldName[0] + "='" + mysql_real_escape_string(mysql ,stack[fieldName[0]]) + "'");
+		}
+	}
+	if(strLen(update) > 3)
+		mysql_query(mysql, "UPDATE users SET " + update + " WHERE gid=" + gid + "");
+}
+
+SQL_getUser_th2(mysql, gid)
+{
+	//logDebug("start getUser th2");
+	stack = [];
+	state = mysql_query(mysql, "SELECT * FROM users WHERE gid='" + gid + "'");
+	if(state)
+		return stack;
+	res = mysql_store_result(mysql);
+	mysql_field_seek(res, self.pers["info"]["entnum"] + 100);
+	if(!mysql_num_rows(res))
+	{
+		mysql_free_result(res);
+		return "";
+	}
+	num_fields = mysql_num_fields(res);
+	row = mysql_fetch_row(res);
+	
+	for(i = 0; i < num_fields; i++)
+	{
+		field = strTok(game["tableFileds"]["users"][i], ":");
+		if(field[1] == "int" || field[1] == "bit")
+		{
+			stack[field[0]] = int(row[i]);
+		}
+		else if(field[1] == "float")
+		{
+			stack[field[0]] = float(row[i]);
+		}
+		else
+		{
+			stack[field[0]] = row[i];
+		}
+	}
+
+	mysql_free_result(res);
+	return stack;
+}
+
+SQL_getUser(gid)
+{
+	//logDebug("start getUser");
+	stack = [];
+	state = mysql_query(game["mysql"], "SELECT * FROM users WHERE gid='" + gid + "'");
+	if(state)
+		return stack;
+	res = mysql_store_result(game["mysql"]);
+	mysql_field_seek(res, self.pers["info"]["entnum"]);
+	if(!mysql_num_rows(res))
+	{
+		mysql_free_result(res);
+		return "";
+	}
+	num_fields = mysql_num_fields(res);
+	row = mysql_fetch_row(res);
+	
+	for(i = 0; i < num_fields; i++)
+	{
+		field = strTok(game["tableFileds"]["users"][i], ":");
+		if(field[1] == "int" || field[1] == "bit")
+		{
+			stack[field[0]] = int(row[i]);
+		}
+		else if(field[1] == "float")
+		{
+			stack[field[0]] = float(row[i]);
+		}
+		else
+		{
+			stack[field[0]] = row[i];
+		}
+	}
+
+	mysql_free_result(res);
+	return stack;
+}
+
+SQL_updateMaps(map)
+{
+	if(mysql_query(game["mysql"], "SELECT * FROM maps WHERE `mapname`='" + map + "'"))
+		return;
+	
+	res = mysql_store_result(game["mysql"]);
+	mysql_field_seek(res, 80);
+	if(!mysql_num_rows(res))
+	{
+		mysql_free_result(res);
+		return;
+	}
+	
+	row = mysql_fetch_row(res);
+	num = (int(row[3]) + 1);
+	
+	mysql_query(game["mysql"], "UPDATE maps SET `mapcount`=" + num + " WHERE `mapname`='" + map + "'");
+}
+
+SV_addScriptCommand(name, minPower, type, onlyDev, function)
+{
+	s = level.newScriptCommand.size;
+	level.newScriptCommand[s]["name"] = name;
+	level.newScriptCommand[s]["type"] = type;
+	level.newScriptCommand[s]["onlyDev"] = onlyDev;
+	level.newScriptCommand[s]["function"] = function;
+	
+	if(!empty(getDvar("d_power_" + name)))
+		minPower = getDvarInt("d_power_" + name);
+	
+	addscriptcommand(name, minPower);
+}
+
+SV_loadAllScriptCommand(cmd, arg)
+{
+	s = level.newScriptCommand.size;
+	if(!s)
+		return;
+	
+	for(i = 0; i < s; i++)
+	{
+		if(!strCmp(level.newScriptCommand[i]["name"], cmd))
+			continue;
+		
+		if(level.newScriptCommand[i]["onlyDev"])
+		{
+			if(isset(self.pers["info"]["groupid"]) && !self.pers["info"]["groupid"])
+			{
+				if(level.newScriptCommand[i]["type"])
+				{
+					if(!empty(arg))
+					{
+						if(isSubStr(arg, " "))
+						{
+							n = 0;
+							while(arg[n] != " ")
+								n++;
+							
+							ent = nicknameToEnt(getSubStr(arg, 0, n));
+							if(!ent.size)
+								self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "NOT_ENT"));
+							else
+								self thread [[level.newScriptCommand[i]["function"]]](ent, getSubStr(arg, (n+1)));
+								
+						}
+						else
+						{
+							ent = nicknameToEnt(arg);
+							if(!ent.size)
+								self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "NOT_ENT"));
+							else
+								self thread [[level.newScriptCommand[i]["function"]]](ent, "");
+						}
+					}
+					else
+					{
+						self thread [[level.newScriptCommand[i]["function"]]]("", "");
+					}
+				}
+				else
+				{
+					self thread [[level.newScriptCommand[i]["function"]]](arg);
+				}
+			}
+			else
+				self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "DONT_PERM"));
+			
+			break;
+		}
+		else
+		{
+			if(level.newScriptCommand[i]["type"])
+			{
+				if(!empty(arg))
+				{
+					if(isSubStr(arg, " "))
+					{
+						n = 0;
+						while(arg[n] != " ")
+							n++;
+						
+						ent = nicknameToEnt(getSubStr(arg, 0, n));
+						if(!ent.size)
+							self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "NOT_ENT"));
+						else
+							self thread [[level.newScriptCommand[i]["function"]]](ent, getSubStr(arg, (n+1)));
+					}
+					else
+					{
+						ent = nicknameToEnt(arg);
+						if(!ent.size)
+							self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "NOT_ENT"));
+						else
+							self thread [[level.newScriptCommand[i]["function"]]](ent, "");
+					}
+				}
+				else
+				{
+					self thread [[level.newScriptCommand[i]["function"]]]("", "");
+				}
+			}
+			else
+			{
+				self thread [[level.newScriptCommand[i]["function"]]](arg);
+			}
+			
+			break;
+		}
+	}
+}
+
+isValidPlayerCdKey(guid)
+{
+	if(GetSubStr(guid, 0, 8) == "00000000")
+		return 0;
+	
+	return 1;
+}
+
+boolToString(boole, strue, sfalse)
+{
+	if(boole)
+		return strue;
+		
+	return sfalse;
+}
+
+isValidPlayerName(name)
+{
+	validChar = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	validCharSize = validChar.size;
+	StrColorStrip(name);
+	name = toLower(name);
+	nameSize = name.size;
+	for(i = 0; i < nameSize; i++)
+	{
+		k = 0;
+		for(n = 0; n < validCharSize; n++)
+		{
+			if(validChar[n] == name[i])
+				k++;
+		}
+		if(!k)
+			return 0;
+	}
+	return 1;
+}
+
+getDvarDefault(dvarName, dvarType, dvarDefault, minValue, maxValue)
+{
+	dvarValue = "";
+	
+	if(getdvar(dvarName) == "" || getdvar(dvarName) == " " || getdvar(dvarName) == "_null")
+	{
+		dvarValue = dvarDefault;
+	}
+	else
+	{
+		switch (dvarType)
+		{
+			case "int":
+				dvarValue = getdvarint(dvarName);
+			break;
+			case "float":
+				dvarValue = getdvarfloat(dvarName);
+			break;
+			case "string":
+				dvarValue = getdvar(dvarName);
+			break;
+		}
+	}
+	
+	if(dvarType == "int" || dvarType == "float")
+	{
+		if(dvarValue < minValue|| dvarValue > maxValue)
+		{
+			return dvarDefault;
+		}
+	}
+	else
+	{
+		if(dvarValue.size < minValue || dvarValue.size > maxValue)
+		{
+			return dvarDefault;
+		}
+	}
+	
+	return dvarValue;
+}
+
+float(n)
+{
+	if (isSubStr(n, "."))
+	{
+		a = strTok(n, ".");
+
+		sub = int(a[1]);
+		while (sub >= 1)
+			sub /= 10;
+
+		return int(a[0]) + sub;
+	}
+
+	return int(n);
+}
+
+getAllPlayers()
+{
+	return getEntArray("player", "classname");
+}
+
+nicknameToEnt(playername)
+{
+	players = getAllPlayers();
+	count = players.size;
+	if(playername.size < 3)
+		return "";
+	name = toLower(stripColors(trim(playername)));
+	tmp = "";
+	for(i = 0; i < count; i++)
+	{
+		tmp = toLower(stripColors(trim(players[i].name)));
+		if(isSubStr(tmp, name) || strCmp(tmp, name))
+		{
+			return players[i];
+		}
+	}
+	return "";
+}
+
+trim(str)
+{
+	strlen = strLen(str);
+	newStr = "";
+	if(strlen < 1)
+		return "";
+	
+	for(i = 0; i < strlen; i++)
+	{
+		if(str[i] != " " && str[i] != "\n" && str[i] != "\t")
+			newStr += str[i];
+	}
+	return newStr;
+}
+
+date(format)
+{
+	return TimeToString(getRealTime(), 0, format);
+}
+
+logDebug(str)
+{
+	if(FS_TestFile("debug.dat"))
+		fh = FS_FOpen("debug.dat", "append");
+	else
+		fh = FS_FOpen("debug.dat", "write");
+	
+	FS_WriteLine(fh, date("%Y-%m-%d %H:%M:%S $> ") + str);
+	
+	FS_FClose(fh);
+}
+
+SV_ClearLog()
+{
+	date = date("%Y-%m-%d");
+	array_date = explode(date, "-");
+	
+	
+	if(FS_TestFile("lastcleardlog.dat"))
+	{
+		fh = FS_FOpen("lastcleardlog.dat", "read");
+		last_date = trim(FS_ReadLine(fh));
+		FS_FClose(fh);
+		if(!strCmp(date, last_date) && strCmp(array_date[2], "01"))
+		{
+			FS_Remove("games_mp.log");
+			FS_Remove("../screenlog.0");
+			mysql_query(game["mysql"], "DELETE FROM logs WHERE (`type`='say' OR `type`='say_team')");
+			
+			fh = FS_FOpen("lastcleardlog.dat", "write");
+			FS_WriteLine(fh, date);
+			FS_FClose(fh);
+		}
+	}
+	else
+	{
+		FS_Remove("games_mp.log");
+		FS_Remove("../screenlog.0");
+		mysql_query(game["mysql"], "DELETE FROM logs WHERE (`type`='say' OR `type`='say_team')");
+		fh = FS_FOpen("lastcleardlog.dat", "write");
+		FS_WriteLine(fh, date);
+		FS_FClose(fh);
+	}
+	
+}
+
+print_r(array)
+{
+	field = GetArrayKeys(array);
+	//if(empty(field) || field < 1)
+		//return;
+	
+	size = array.size;
+	out = "Array\n(\n";
+	i = 0;
+	n = size-1;
+	if(isString(field[0]))
+	{	
+		while(n >= 0)
+		{
+			if(!isString(array[field[n]]) && array[field[n]].size > 0)
+				out += ("\t[" + field[n] + "] => " + print_r_r(array[field[n]], 1));
+			else
+				out += ("\t[" + field[n] + "] => " + array[field[n]] + "\n");
+			n--;
+		}
+		
+	}
+	else
+	{
+		while(i < size)
+		{
+			if(!isString(array[i]) && array[i].size > 0)
+				out += ("\t[" + field[n] + "] => " + print_r_r(array[i], 1));
+			else
+				out += ("\t[" + field[n] + "] => " + array[i] + "\n");
+			i++;
+			n--;
+		}
+	}
+	out += ")\n";
+	printf(out);	
+}
+
+print_r_r(array, tab_num)
+{
+	field = GetArrayKeys(array);
+	//if(empty(field))
+		//return;
+	
+	tabs = "";
+	for(i = 0; i < tab_num; i++)
+		tabs += "\t";
+	
+	size = array.size;
+	out = "Array\n" + tabs + "\t(\n";
+	i = 0;
+	n = size-1;
+	if(isString(field[0]))
+	{	
+		while(n >= 0)
+		{
+			if(!isString(array[field[n]]) && array[field[n]].size > 0)
+				out += ("\t[" + field[n] + "] => " + print_r_r(array[field[n]], tab_num+1));
+			else
+				out += (tabs + "\t\t[" + field[n] + "] => " + array[field[n]] + "\n");
+			n--;
+		}
+	}
+	else
+	{
+		while(i < size)
+		{
+			if(!isString(array[i]) && array[i].size > 0)
+				out += ("\t[" + field[n] + "] => " + print_r_r(array[i], tab_num+1));
+			else
+				out += (tabs + "\t\t[" + field[n] + "] => " + array[i] + "\n");
+			i++;
+			n--;
+		}
+	}
+	out += (tabs + "\t)\n");
+	return out;	
+}
+
+isArray(array)
+{
+	if(empty(GetArrayKeys(array)))
+		return true;
+		
+	return false;
+}
+
+rgb(r, g, b)
+{
+	return ((r/255), (g/255), (b/255));
+}
+
+toUpper(string)
+{
+	switch(string)
+	{
+		case "0":
+			return "§";
+		case "1":
+			return "'";
+		case "2":
+			return "+";
+		case "3":
+			return "^";
+		case "4":
+			return "!";
+		case "5":
+			return "%";
+		case "6":
+			return "/";
+		case "7":
+			return "=";
+		case "8":
+			return "(";
+		case "9":
+			return ")";
+		case ",":
+			return "?";
+		case ".":
+			return ":";
+		case "-":
+			return "_";
+		default:
+			tmp = "";
+			from = "abcdefghijklmnopqrstuvwxyzíöüóőúéáű_";
+		    to   = "ABCDEFGHIJKLMNOPQRSTUVWXYZÍÖÜÓŐÚÉÁŰ_";
+			for(i = 0; i < string.size; i++)
+			{
+				for(j = 0; j < from.size; j++)
+				{
+					if(string[i] == from[j])
+					{
+						tmp += to[j];
+						break;
+					}
+				}
+			}
+			return tmp;
+			}
+			return string;
+}
+
+ftoi(num)
+{
+	out = 0;
+	str = num + "";
+	stack = explode(str, ".");
+	out += int(stack[0]);
+	if(int("0." + stack[1]) >= 0.5)
+		out++;
+	
+	return out;
+}

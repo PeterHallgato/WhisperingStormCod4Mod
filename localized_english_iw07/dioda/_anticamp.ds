@@ -1,0 +1,277 @@
+///==========================================///
+///    _____    _               _            ///
+///   |  __ \  (_)             | |           ///
+///   | |  | |  _    ___     __| |   __ _    ///
+///   | |  | | | |  / _ \   / _` |  / _` |   ///
+///   | |__| | | | | (_) | | (_| | | (_| |   ///
+///   |_____/  |_|  \___/   \__,_|  \__,_|   ///
+///                                          ///
+///           www.servergreen.eu             ///
+///                                          ///
+///==========================================///
+
+init()
+{
+	level.anticamp["distance"] = 80;
+	level.anticamp["time"] = 35;
+	level.anticamp["enable"] = 0;
+	
+	if(!empty(getDvar("d_antiCamp_distance")) && getDvarInt("d_antiCamp_distance") > 20)
+		level.anticamp["distance"] = getDvarInt("d_antiCamp_distance");
+	
+	if(!empty(getDvar("d_antiCamp_time")) && getDvarInt("d_antiCamp_time") > 8)
+		level.anticamp["time"] = getDvarInt("d_antiCamp_time");
+	
+	if(!empty(getDvar("d_antiCamp_enable")))
+		level.anticamp["enable"] = getDvarInt("d_antiCamp_enable");
+}
+
+MonitorCamping()
+{
+	if(!level.anticamp["enable"])
+		return;
+	
+	level endon("mapvote_start");
+	self endon ("end_game");
+	self endon ("disconnect");
+	self endon ("killed_player");
+	
+	self.anticamp = undefined;
+	self.anticamp["indicator"] = 1;
+	self.anticamp["isCamping"] = false;
+	
+	self thread createIndicatorHud();
+	self thread updateIndicatorHud();
+	self thread upIndicatorHud();
+	self thread downIndicatorHud();
+	self thread lookAds();
+	
+	
+	if(!self.pers["info"]["groupid"] || self.pers["group"]["power"] >= 50)
+		return;
+
+	while(isAlive(self) && self.pers["team"] != "spectator" && !self.pers["isBot"])
+	{
+		self.anticamp["position"]["before"] = self getorigin();
+		wait(1);		
+		self.anticamp["position"]["after"] = self getorigin();
+		
+		self.anticamp["currentWeapon"] = self GetCurrentWeapon();
+		
+		if(!isSniper() && !isExplosive() && !isKillStreak() && !isOtherWeapons() && !level.anticamp["waiter"])
+		{
+			if((distance( self.anticamp["position"]["before"], self.anticamp["position"]["after"] ) < level.anticamp["distance"]))
+			{
+				self.anticamp["isCamping"] = true;
+			}
+			else
+			{
+				self.anticamp["isCamping"] = false;
+			}
+		}
+		else
+		{
+			self.anticamp["isCamping"] = false;
+			self.anticamp["indicator"] = 1;
+			self.newClientHud[self.antiCampHudOffset + 1] setShader("white", 1, 10);
+			self.newClientHud[self.antiCampHudOffset + 1].Color = self.pers["ghud"]["glow_color"];
+		}
+	}
+}
+
+updateIndicatorHud()
+{
+	self endon("end_game");
+	self endon("disconnect");
+	self endon("killed_player");
+	while(1)
+	{
+		if(self.anticamp["isCamping"])
+			self notify("playerCampStarted");
+		else
+			self notify("playerCampStoped");
+		
+		wait(level.anticamp["time"]/50);
+	}
+}
+
+createIndicatorHud()
+{
+	self endon("end_game");
+	self endon("disconnect");
+	self endon("killed_player");
+	
+	if(isSet(self.newClientHud[self.antiCampHudOffset]))
+		self.newClientHud[self.antiCampHudOffset] destroy();
+	
+	if(isSet(self.newClientHud[self.antiCampHudOffset + 1]))
+		self.newClientHud[self.antiCampHudOffset + 1] destroy();
+	
+	
+	self.antiCampHudOffset = self.newClientHud.size;
+	self.newClientHud[self.antiCampHudOffset] = NewClientHudElem(self);
+	self.newClientHud[self.antiCampHudOffset].x = 3;
+	self.newClientHud[self.antiCampHudOffset].y = 466;
+	self.newClientHud[self.antiCampHudOffset].alignx = "left";
+	self.newClientHud[self.antiCampHudOffset].aligny = "top";
+	self.newClientHud[self.antiCampHudOffset].horzAlign = "fullscreen";
+	self.newClientHud[self.antiCampHudOffset].vertAlign = "fullscreen";
+	self.newClientHud[self.antiCampHudOffset].sort = 0;
+	self.newClientHud[self.antiCampHudOffset].alpha = 0.7;
+	self.newClientHud[self.antiCampHudOffset] setShader("black", 50, 10);
+	
+	self.newClientHud[self.antiCampHudOffset + 1] = NewClientHudElem(self);
+	self.newClientHud[self.antiCampHudOffset + 1].x = 3;
+	self.newClientHud[self.antiCampHudOffset + 1].y = 466;
+	self.newClientHud[self.antiCampHudOffset + 1].alignx = "left";
+	self.newClientHud[self.antiCampHudOffset + 1].aligny = "top";
+	self.newClientHud[self.antiCampHudOffset + 1].horzAlign = "fullscreen";
+	self.newClientHud[self.antiCampHudOffset + 1].vertAlign = "fullscreen";
+	self.newClientHud[self.antiCampHudOffset + 1].sort = 1;
+	self.newClientHud[self.antiCampHudOffset + 1].alpha = 0.8;
+}
+
+
+
+upIndicatorHud()
+{
+	self endon("end_game");
+	self endon("disconnect");
+	self endon("killed_player");
+	
+	while(1)
+	{
+		self waittill("playerCampStarted");
+		
+		if(self.anticamp["indicator"] == 30)
+			self echo("^1Move! Mozogj!");
+		
+		self.anticamp["indicator"]++;
+		self.newClientHud[self.antiCampHudOffset + 1] setShader("white", self.anticamp["indicator"], 10);
+		self.newClientHud[self.antiCampHudOffset + 1].Color = self.pers["ghud"]["glow_color"];
+		
+		if(self.anticamp["indicator"] == 50)
+		{
+			self echo("^1Camper!");
+			self suicide();
+			break;
+		}
+	}
+}
+
+downIndicatorHud()
+{
+	self endon("end_game");
+	self endon("disconnect");
+	self endon("killed_player");
+	
+	while(1)
+	{
+		self waittill("playerCampStoped");
+		if(self.anticamp["indicator"] > 1)
+		{
+			self.anticamp["indicator"]--;
+			self.newClientHud[self.antiCampHudOffset + 1] setShader("white", self.anticamp["indicator"], 10);
+			self.newClientHud[self.antiCampHudOffset + 1].Color = self.pers["ghud"]["glow_color"];
+		}
+	}
+}
+
+isOtherWeapons()
+{
+	if(empty(getDvar("d_anticamp_protectedWeapons")))
+		return false;
+	
+	weapons = explode(getDvar("d_anticamp_protectedWeapons"), ";");
+	
+	waitCurrentWeapon();
+	
+	count = weapons.size;
+	for(i = 0; i < count; i++)
+	{
+		if((self.anticamp["currentWeapon"] == (weapons[i] + "_mp")) || (self.anticamp["currentWeapon"] == (weapons[i] + "_acog_mp")) || (self.anticamp["currentWeapon"] == (weapons[i] + "_grip_mp")) || (self.anticamp["currentWeapon"] == (weapons[i] + "_silencer_mp")) || (self.anticamp["currentWeapon"] == (weapons[i] + "_reflex_mp")))
+			return true;
+	}
+	return false;
+}
+
+isSniper()
+{
+	sniper[0] = "m40a3";
+	sniper[1] = "m21";
+	sniper[2] = "remington700";
+	sniper[3] = "barrett";
+	sniper[4] = "dragunov";
+	
+	waitCurrentWeapon();
+	
+	count = sniper.size;
+	for(i = 0; i < count; i++)
+	{
+		if((self.anticamp["currentWeapon"] == (sniper[i] + "_mp")) || (self.anticamp["currentWeapon"] == (sniper[i] + "_acog_mp")))
+			return true;
+	}
+	return false;
+}
+
+isExplosive()
+{
+	explosive[0] = "claymore_mp";
+	explosive[1] = "flash_grenade_mp";
+	explosive[2] = "frag_grenade_mp";
+	explosive[3] = "smoke_grenade_mp";
+	
+	waitCurrentWeapon();
+	
+	count = explosive.size;
+	for(i = 0; i < count; i++)
+	{
+		if(self.anticamp["currentWeapon"] == explosive[i])
+			return true;
+	}
+	return false;
+}
+
+isKillStreak()
+{
+	if(isSet(self.pavelow["use"]) && self.pavelow["use"])
+		return true;
+	
+	killStreak[0] = "radar_mp";
+	killStreak[1] = "airstrike_mp";
+	killStreak[2] = "helicopter_mp";
+	
+	waitCurrentWeapon();
+	
+	count = killStreak.size;
+	for(i = 0; i < count; i++)
+	{
+		if(self.anticamp["currentWeapon"] == killStreak[i])
+			return true;
+	}
+	return false;
+}
+
+lookAds()
+{
+	self.isAds = false;
+	
+	while(1)
+	{
+		if(self AdsButtonPressed() && self GetStance() == "prone")
+			self.isAds = true;
+		else
+			self.isAds = false;
+		
+		wait(0.1);
+	}
+}
+
+waitCurrentWeapon()
+{
+	while(empty(self.anticamp["currentWeapon"]) || self.anticamp["currentWeapon"] == "none")
+	{
+		self.anticamp["currentWeapon"] = self GetCurrentWeapon();
+		wait(0.01);
+	}
+}

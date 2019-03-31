@@ -1,0 +1,475 @@
+///==========================================///
+///    _____    _               _            ///
+///   |  __ \  (_)             | |           ///
+///   | |  | |  _    ___     __| |   __ _    ///
+///   | |  | | | |  / _ \   / _` |  / _` |   ///
+///   | |__| | | | | (_) | | (_| | | (_| |   ///
+///   |_____/  |_|  \___/   \__,_|  \__,_|   ///
+///                                          ///
+///           www.servergreen.eu             ///
+///                                          ///
+///==========================================///
+
+init()
+{
+	precacheModel("projectile_m203grenade");
+	precacheModel("projectile_cbu97_clusterbomb");
+	precacheModel("projectile_hellfire_missile");
+	
+	level.pavelow["fx"]["105mm"] = loadFx("explosions/aerial_explosion_large");
+	level.pavelow["fx"]["40mm"] = loadFx("explosions/grenadeExp_concrete_1");
+	
+	level.pavelow["endtime"] = 35;
+	if(!empty(getDvar("d_pavelow_time")) && getDvarInt("d_pavelow_time") > 0)
+		level.pavelow["endtime"] = getDvarInt("d_pavelow_time");
+	
+	level.mapName = getdvar("mapname");
+}
+
+Call_Pavelow()
+{
+	if(isSet(self.pavelow))
+		self.pavelow = undefined;
+	
+	if(isSet(self.old))
+		self.old = undefined;
+	
+	
+	switch(level.mapName)
+	{
+		case "mp_bloc":
+			self.pavelow["startOrigin"] = (1100, -5836, 1800);
+		break;
+		case "mp_crossfire":
+			self.pavelow["startOrigin"] = (4566, -3162, 1800);
+		break;
+		case "mp_citystreets":
+			self.pavelow["startOrigin"] = (4384, -469, 1500);
+		break;
+		case "mp_creek":
+			self.pavelow["startOrigin"] = (-1595, 6528, 2000);
+		break;
+		default:
+			self.pavelow["startOrigin"] = getAboveBuildings(maps\mp\gametypes\_spawnlogic::findBoxCenter(level.spawnMins, level.spawnMaxs));
+		break;
+	}
+	
+	self.pavelow["use"] = true;
+	level.pavelow["use"] = true;
+	self.pavelow["time"] = level.pavelow["endtime"];
+	self AllowAds(false);
+	
+	self.pavelow["weapons"][0] = ::weapon105mm;
+	self.pavelow["weapons"][1] = ::weapon40mm;
+	self.pavelow["weapons"][2] = ::weapon25mm;
+	
+	//self setClientDvars("scr_weapon_allowfrags", "0", "cg_drawcrosshair", "0", "cg_drawGun", "0", "r_colormap", "1", "r_fullbright", "0", "r_specularmap", "0", "r_debugShader", "0", "r_filmTweakEnable", "1", "r_filmUseTweaks", "1", "cg_gun_x", "0", "r_filmTweakInvert", "1", "r_filmTweakbrightness", "0", "r_filmtweakLighttint", "1.1 1.05 0.85", "r_filmtweakdarktint", "0.7 0.85 1");
+	
+	self.old["origin"] = self getOrigin();
+	self.old["weapons"] = self getWeaponsList();
+	self takeAllWeapons();
+	
+	self.pavelow["model"] = Spawn("script_model", self.pavelow["startOrigin"]);
+	self.pavelow["model"] setModel("vehicle_cobra_helicopter_fly");
+	
+	self enableLinkTo();
+	self linkTo(self.pavelow["model"], "tag_player", (0, 0, -120), (0, 0, 0));
+	self hide();
+	self thread movePavelow();
+	self thread chooseWeapons();
+	self thread exitPavelow();
+	self thread playerDeath();
+	self thread playerDisconnect();
+	self thread timer();
+	self thread disableAntiCamp();
+	self IPrintLnBold("^3Press ^2[G] ^3to switch weapons!");
+	self IPrintLnBold("");
+	self IPrintLnBold("^3Press ^2[V] ^3to exit Pavelow!");
+}
+
+disableAntiCamp()
+{
+	while(self.pavelow["use"])
+	{
+		self.anticamp["isCamping"] = false;
+		self.anticamp["indicator"] = 1;
+		self notify("playerCampStoped");
+		wait(1);
+	}
+}
+
+timer()
+{
+	self endon("death");
+	self endon("disconnect");
+	self endon ("end_game");
+	self endon ("killed_player");
+	/*
+	while(1)
+	{
+		wait(1);
+		self.pavelow["time"]++;
+	}
+	*/
+	/*
+	for(i = level.pavelow["endtime"]; i > 0; i--)
+	{
+		wait(1);
+		self.pavelow["time"] = i;
+	}
+	*/
+	while(self.pavelow["time"] != 0)
+	{
+		wait(1);
+		self.pavelow["time"]--;
+	}
+}
+
+exitPavelow()
+{
+	self endon("death");
+	self endon("disconnect");
+	
+	while(self.pavelow["use"])
+	{
+		if(self meleeButtonPressed() || !self.pavelow["time"])
+		{
+			ClearPrint();
+			for(index = 0; index < 3; index++)
+				self.pavelow["BulletCount"][index] = undefined;
+				
+			crossHairHudCount = self.pavelow["crossHairHud"][self.pavelow["crossHairNum"]].size;
+			for(crossHairHudIndex = 0; crossHairHudIndex < crossHairHudCount; crossHairHudIndex++)
+				self.pavelow["crossHairHud"][self.pavelow["crossHairNum"]][crossHairHudIndex] destroy();
+				
+			self unLink();
+			self notify("WeaponChange");
+			self AllowAds(true);
+			self show();
+			//self setClientDvars("scr_weapon_allowfrags", "1", "cg_drawcrosshair", "1", "cg_drawGun", "1", "r_colormap", "1", "r_fullbright", "0", "r_specularmap", "0", "r_debugShader", "0", "r_filmTweakEnable", "0", "r_filmUseTweaks", "0", "cg_gun_x", "0", "FOV", "30", "r_filmTweakInvert", "0", "r_filmtweakLighttint", "1.1 1.05 0.85", "r_filmtweakdarktint", "0.7 0.85 1");
+			self.pavelow["model"] delete();
+			
+			self setOrigin(self.old["origin"]);
+			
+			oldWeaponsCount = self.old["weapons"].size;
+			for(i = 0; i < oldWeaponsCount; i++)
+			{
+				weapon = self.old["weapons"][i];
+				if(weapon != "radar_mp")
+					self giveWeapon(weapon);
+			}
+			self switchToWeapon(self.old["weapons"][0]);
+			
+			self.pavelow["use"] = false;
+			level.pavelow["use"] = undefined;
+		}
+		wait(0.05);
+	}
+}
+
+playerDeath()
+{	
+	while(1)
+	{
+		self waittill("death");
+		
+		for(index = 0; index < 3; index++)
+				self.pavelow["BulletCount"][index] = undefined;
+				
+		crossHairHudCount = self.pavelow["crossHairHud"][self.pavelow["crossHairNum"]].size;
+		for(crossHairHudIndex = 0; crossHairHudIndex < crossHairHudCount; crossHairHudIndex++)
+				self.pavelow["crossHairHud"][self.pavelow["crossHairNum"]][crossHairHudIndex] destroy();
+				
+		self unLink();
+		self AllowAds(true);
+		self show();
+		//self setClientDvars("scr_weapon_allowfrags", "1", "cg_drawcrosshair", "1", "cg_drawGun", "1", "r_colormap", "1", "r_fullbright", "0", "r_specularmap", "0", "r_debugShader", "0", "r_filmTweakEnable", "0", "r_filmUseTweaks", "0", "cg_gun_x", "0", "FOV", "30", "r_filmTweakInvert", "0", "r_filmtweakLighttint", "1.1 1.05 0.85", "r_filmtweakdarktint", "0.7 0.85 1");
+		self.pavelow["model"] delete();
+		self.pavelow["use"] = false;
+		level.pavelow["use"] = undefined;
+	}
+	
+}
+
+playerDisconnect()
+{	
+	while(1)
+	{
+		self waittill("player_disconnect");
+		for(index = 0; index < 3; index++)
+				self.pavelow["BulletCount"][index] = undefined;
+				
+		crossHairHudCount = self.pavelow["crossHairHud"][self.pavelow["crossHairNum"]].size;
+		for(crossHairHudIndex = 0; crossHairHudIndex < crossHairHudCount; crossHairHudIndex++)
+				self.pavelow["crossHairHud"][self.pavelow["crossHairNum"]][crossHairHudIndex] destroy();
+				
+		self unLink();
+		self AllowAds(true);
+		self show();
+		//self setClientDvars("scr_weapon_allowfrags", "1", "cg_drawcrosshair", "1", "cg_drawGun", "1", "r_colormap", "1", "r_fullbright", "0", "r_specularmap", "0", "r_debugShader", "0", "r_filmTweakEnable", "0", "r_filmUseTweaks", "0", "cg_gun_x", "0", "FOV", "30", "r_filmTweakInvert", "0", "r_filmtweakLighttint", "1.1 1.05 0.85", "r_filmtweakdarktint", "0.7 0.85 1");
+		self.pavelow["model"] delete();
+		self.pavelow["use"] = false;
+		level.pavelow["use"] = undefined;
+	}
+	
+}
+
+movePavelow()
+{
+	self endon("death");
+	self endon("disconnect");
+	
+	angle = 0;
+	radius = 1100;
+	defaultAngles = self.pavelow["model"].angles;
+	self.pavelow["model"].angles = (defaultAngles[0] + 20, 180, defaultAngles[2]);
+	
+	while(self.pavelow["use"])
+	{
+		x = self.pavelow["startOrigin"][0] + (radius * cos(angle));
+		y = self.pavelow["startOrigin"][1] + (radius * sin(angle));
+		//c = sqrt(square(radius) + square(radius) - 2 * square(radius) * cos(angle));
+		//yawAngle = acos((square(radius) + square(radius) - square(c)) / (2 * square(radius)));
+		
+		self.pavelow["model"] moveTo((x, y, self.pavelow["startOrigin"][2]), 0.1);
+		self.pavelow["model"] rotateYaw(1, 0.1);
+		
+		angle++;
+		if(angle > 360)
+			angle = 0;
+		
+		wait(0.1);
+	}
+}
+
+square(num)
+{
+	return (num * num);
+}
+
+chooseWeapons()
+{
+	self endon("death");
+	self endon("disconnect");
+	self.pavelow["crossHairNum"] = 0;
+	
+	self thread [[self.pavelow["weapons"][self.pavelow["crossHairNum"]]]]();
+	
+	while(self.pavelow["use"])
+	{
+		if(self fragButtonPressed())
+		{
+			ClearPrint();
+			self notify("WeaponChange");
+			
+			
+			count = self.pavelow["crossHairHud"][self.pavelow["crossHairNum"]].size;
+			for(hudIndex = 0; hudIndex < count; hudIndex++)
+				self.pavelow["crossHairHud"][self.pavelow["crossHairNum"]][hudIndex] destroy();
+			
+			self.pavelow["crossHairNum"]++;
+			if(self.pavelow["crossHairNum"] >= self.pavelow["weapons"].size)
+				self.pavelow["crossHairNum"] = 0;
+			
+			self thread [[self.pavelow["weapons"][self.pavelow["crossHairNum"]]]]();
+			wait(0.5);
+		}
+		wait(0.05);
+	}
+}
+
+createPavelowBullet(model, radius, effect)
+{
+	bullet = Spawn("script_model", self getTagOrigin("tag_weapon_right"));
+	bullet setModel(model);
+	position = self getCursorPosition();
+	bullet.angles = self getPlayerAngles();
+	bullet moveTo(position, 0.5);
+	wait(0.5);
+	bullet delete();
+	playFx(effect, position);
+	radiusDamage(position, radius, 350, 150, self);
+}
+
+getCursorPosition()
+{
+	return BulletTrace(self getTagOrigin("tag_weapon_right"), maps\mp\_utility::vector_scale(anglesToForward(self getPlayerAngles()), 1000000), false, self)["position"];
+}
+
+/*
+getAboveBuildings(location)
+{
+	trance = bulletTrace((location + (0, 0, 10000)), location, false, undefined);
+	origin["start"] = (trance["position"] + (0, 0, -514));
+	
+	position["z"] = 0;
+	position["max"]["x"] = 13;
+	position["max"]["y"] = 13;
+	
+	for(position["x"] = 0; position["x"] < position["max"]["x"]; position["x"]++)
+	{
+		for(position["y"] = 0; position["y"] < position["max"]["y"]; position["y"]++)
+		{
+			origin["thisStart"] = (origin["start"] + ((position["x"] / (position["max"]["x"] - 1) - 0.5) * 1024, (position["y"] / (position["max"]["y"] - 1) - 0.5) * 1024, 0));
+			origin["this"] = bullettrace(origin["thisStart"], (origin["thisStart"] + (0, 0, -10000)), false, undefined);
+			position["z"] += origin["this"][2];
+		}
+	}
+	
+	position["z"] = (position["z"] / (position["max"]["x"] * position["max"]["y"]));
+	return (location[0], location[1], (position["z"] + 1000));
+}
+*/
+
+getAboveBuildings(location)
+{
+	trace = bullettrace(location + (0,0,10000), location, false, undefined);
+	startorigin = trace["position"] + (0,0,-514);
+	zpos = 0;
+	maxxpos = 13;
+	maxypos = 13;
+	for( xpos = 0; xpos < maxxpos; xpos++ )
+	{
+		for( ypos = 0; ypos < maxypos; ypos++ )
+		{
+			thisstartorigin = startorigin + ((xpos/(maxxpos-1) - 0.5) * 1024, (ypos/(maxypos-1) - 0.5) * 1024, 0);
+			thisorigin = bullettrace(thisstartorigin, thisstartorigin + (0,0,-10000), false, undefined);
+			zpos += thisorigin["position"][2];
+		}
+	}
+	zpos = zpos / ( maxxpos * maxypos );
+	zpos = zpos + 1000;
+	return ( location[0], location[1], zpos );
+}
+
+ClearPrint()
+{
+	for(i = 0; i < 4; i++)
+		self iPrintln( " " );
+}
+
+weapon105mm()
+{
+	self.pavelow["crossHairHud"][0][0] = addCrossHairHud(21,0,2,24);
+	self.pavelow["crossHairHud"][0][1] = addCrossHairHud(-20,0,2,24);
+	self.pavelow["crossHairHud"][0][2] = addCrossHairHud(0,-11,40,2);
+	self.pavelow["crossHairHud"][0][3] = addCrossHairHud(0,11,40,2);
+	self.pavelow["crossHairHud"][0][4] = addCrossHairHud(0,-39,2,57);
+	self.pavelow["crossHairHud"][0][5] = addCrossHairHud(0,39,2,57);
+	self.pavelow["crossHairHud"][0][6] = addCrossHairHud(-48,0,57,2);
+	self.pavelow["crossHairHud"][0][7] = addCrossHairHud(49,0,57,2);
+	self.pavelow["crossHairHud"][0][8] = addCrossHairHud(-155,-122,2,21);
+	self.pavelow["crossHairHud"][0][9] = addCrossHairHud(-154,122,2,21);
+	self.pavelow["crossHairHud"][0][10] = addCrossHairHud(155,122,2,21);
+	self.pavelow["crossHairHud"][0][11] = addCrossHairHud(155,-122,2,21);
+	self.pavelow["crossHairHud"][0][12] = addCrossHairHud(-145,132,21,2);
+	self.pavelow["crossHairHud"][0][13] = addCrossHairHud(145,-132,21,2);
+	self.pavelow["crossHairHud"][0][14] = addCrossHairHud(-145,-132,21,2);
+	self.pavelow["crossHairHud"][0][15] = addCrossHairHud(146,132,21,2);
+	self thread setPavelowWeapons(1,0,1,"projectile_cbu97_clusterbomb",0.4,350,level.pavelow["fx"]["105mm"],"weap_barrett_fire_plr");
+}
+weapon40mm()
+{
+	self.pavelow["crossHairHud"][1][0] = addCrossHairHud(0,-70,2,115);
+	self.pavelow["crossHairHud"][1][1] = addCrossHairHud(0,70,2,115);
+	self.pavelow["crossHairHud"][1][2] = addCrossHairHud(-70,0,115,2);
+	self.pavelow["crossHairHud"][1][3] = addCrossHairHud(70,0,115,2);
+	self.pavelow["crossHairHud"][1][4] = addCrossHairHud(0,-128,14,2);
+	self.pavelow["crossHairHud"][1][5] = addCrossHairHud(0,128,14,2);
+	self.pavelow["crossHairHud"][1][6] = addCrossHairHud(-128,0,2,14);
+	self.pavelow["crossHairHud"][1][7] = addCrossHairHud(128,0,2,14);
+	self.pavelow["crossHairHud"][1][8] = addCrossHairHud(0,-35,8,2);
+	self.pavelow["crossHairHud"][1][9] = addCrossHairHud(0,35,8,2);
+	self.pavelow["crossHairHud"][1][10] = addCrossHairHud(-29,0,2,8);
+	self.pavelow["crossHairHud"][1][11] = addCrossHairHud(29,0,2,8);
+	self.pavelow["crossHairHud"][1][12] = addCrossHairHud(-64,0,2,9);
+	self.pavelow["crossHairHud"][1][13] = addCrossHairHud(64,0,2,9);
+	self.pavelow["crossHairHud"][1][14] = addCrossHairHud(0,-85,10,2);
+	self.pavelow["crossHairHud"][1][15] = addCrossHairHud(0,85,10,2);
+	self.pavelow["crossHairHud"][1][16] = addCrossHairHud(-99,0,2,10);
+	self.pavelow["crossHairHud"][1][17] = addCrossHairHud(99,0,2,10);
+	self thread setPavelowWeapons(0.2,1,5,"projectile_hellfire_missile",0.3,80,level.pavelow["fx"]["40mm"],"weap_deserteagle_fire_plr");
+}
+weapon25mm()
+{
+	self.pavelow["crossHairHud"][2][0] = addCrossHairHud(21,0,35,2);
+	self.pavelow["crossHairHud"][2][1] = addCrossHairHud(-21,0,35,2);
+	self.pavelow["crossHairHud"][2][2] = addCrossHairHud(0,25,2,46);
+	self.pavelow["crossHairHud"][2][3] = addCrossHairHud(-60,-57,2,22);
+	self.pavelow["crossHairHud"][2][4] = addCrossHairHud(-60,57,2,22);
+	self.pavelow["crossHairHud"][2][5] = addCrossHairHud(60,57,2,22);
+	self.pavelow["crossHairHud"][2][6] = addCrossHairHud(60,-57,2,22);
+	self.pavelow["crossHairHud"][2][7] = addCrossHairHud(-50,68,22,2);
+	self.pavelow["crossHairHud"][2][8] = addCrossHairHud(50,-68,22,2);
+	self.pavelow["crossHairHud"][2][9] = addCrossHairHud(-50,-68,22,2);
+	self.pavelow["crossHairHud"][2][10] = addCrossHairHud(50,68,22,2);
+	self.pavelow["crossHairHud"][2][11] = addCrossHairHud(6,9,1,7);
+	self.pavelow["crossHairHud"][2][12] = addCrossHairHud(9,6,7,1);
+	self.pavelow["crossHairHud"][2][13] = addCrossHairHud(11,14,1,7);
+	self.pavelow["crossHairHud"][2][14] = addCrossHairHud(14,11,7,1);
+	self.pavelow["crossHairHud"][2][15] = addCrossHairHud(16,19,1,7);
+	self.pavelow["crossHairHud"][2][16] = addCrossHairHud(19,16,7,1);
+	self.pavelow["crossHairHud"][2][17] = addCrossHairHud(21,24,1,7);
+	self.pavelow["crossHairHud"][2][18] = addCrossHairHud(24,21,7,1);
+	self.pavelow["crossHairHud"][2][19] = addCrossHairHud(26,29,1,7);
+	self.pavelow["crossHairHud"][2][20] = addCrossHairHud(29,26,7,1);
+	self.pavelow["crossHairHud"][2][21] = addCrossHairHud(36,33,6,1);
+	self thread setPavelowWeapons(0.08,2,30,"projectile_m203grenade",0.2,25,level.pavelow["fx"]["25mm"],"weap_g3_fire_plr");
+}
+
+setPavelowWeapons(time, hud, num, model, scale, radius, effect, sound)
+{
+	self endon("disconnect");
+	self endon("death");
+	self endon("WeaponChange");
+	
+	if(!isSet(self.pavelow["BulletCount"][hud]))
+		self.pavelow["BulletCount"][hud] = 0;
+		
+	resetBullet(hud, num);
+	
+	while(1)
+	{
+		if(self attackButtonPressed())
+		{
+			SoundFade();
+			self playSound(sound);
+			thread createPavelowBullet(model, radius, effect);
+			self.pavelow["BulletCount"][hud]++;
+			if( self.pavelow["BulletCount"][hud] <= num )
+				EarthQuake(scale, 0.2, self.origin, 200);
+				
+			resetBullet(hud, num);
+			wait(time);
+		}
+		wait(0.05);
+	}
+}
+
+resetBullet(hud, num)
+{
+	if(self.pavelow["BulletCount"][hud] >= num)
+	{
+		self iPrintln("Reloading");
+		wait(2);
+		self.pavelow["BulletCount"][hud] = 0;
+		if(isSet(self.pavelow["crossHairHud"][hud][0]))
+			ClearPrint();
+	}
+}
+
+addCrossHairHud(x, y, width, height)
+{
+	hud = newClientHudElem(self);
+	hud.sort = 3;
+	hud.alpha = 1;
+	hud.hidden = false;
+	hud.horzAlign = "center";
+	hud.vertAlign = "middle";
+	hud.alignX = "center";
+	hud.alignY = "middle";
+	hud.x = x;
+	hud.y = y;
+	hud setShader("white", width, height);
+	return hud;
+}

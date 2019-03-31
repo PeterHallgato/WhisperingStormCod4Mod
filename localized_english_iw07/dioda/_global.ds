@@ -1,0 +1,437 @@
+///==========================================///
+///    _____    _               _            ///
+///   |  __ \  (_)             | |           ///
+///   | |  | |  _    ___     __| |   __ _    ///
+///   | |  | | | |  / _ \   / _` |  / _` |   ///
+///   | |__| | | | | (_) | | (_| | | (_| |   ///
+///   |_____/  |_|  \___/   \__,_|  \__,_|   ///
+///                                          ///
+///           www.servergreen.eu             ///
+///                                          ///
+///==========================================///
+
+#include dioda\_utils;
+
+CallBack_StartGametype()
+{
+	thread customHostName();
+	//setDvar("sv_hostname", "GameTrackerClaimServer");
+	dioda\_predator::init();
+	level.info["hud"]["color"] = rgb(63,81,181);//152, 82, 8 //rgb(65, 164, 42);
+	level.info["hud"]["glowcolor"] = rgb(160, 183, 131);
+	
+	/*
+	level.anticamp["camptime"] = precacheDvar("d_anticamp_time", 15, "int");
+	level.anticamp["distance"] = precacheDvar("d_anticamp_distance", 100, "int");
+	*/
+	
+	dioda\_anticamp::init();
+	
+	level.info["xpmultiplier"] = precacheDvar("d_xp_multiplier", 1, "int");
+	
+	level.antiaim["time"] = precacheDvar("d_antiaim_time", 7, "int");
+	level.antiaim["headshots"] = precacheDvar("d_antiaim_headshots", 7, "int");
+	level.weapControl["allow_gl"] = getDvarInt("d_allow_gl");
+	level.mapvote = getDvarInt("d_allow_mapvote");
+/*
+	precacheString(&"K/D Ratio: ^1&&1");
+	precacheString(&"Accuracy: ^1&&1");
+	precacheString(&"Kills: ^1&&1");
+	precacheString(&"Deaths: ^1&&1");
+	precacheString(&" | &&1");
+	precacheShader("weapon_fraggrenade");
+	precacheShader("weapon_flashbang");
+	precacheShader("weapon_smokegrenade");
+	precacheShader("line_horizontal");
+	precacheShader("line_vertical");
+	*/
+	//precacheShader("nightvision_overlay_goggles");
+	//precacheShader("hud_arrow_left");
+	//precacheShader("hud_arrow_right");
+	//precacheShader("ui_host");
+	
+	level thread onPlayerConnect();
+	level thread onEndGame();
+	//level thread vision();
+}
+
+vision()
+{
+	level waittill("prematch_over");
+	VisionSetNaked( "cobra_sunset1", 1.5 );
+	//VisionSetNaked( "cobrapilot", 1.5 );
+	//SetExpFog( 512, 1024, 31/255, 63/255, 80/255, 0 );//kék
+	SetExpFog( 650, 1024, 45/255, 97/255, 100/255, 0 );//piros
+}
+
+
+customHostName()
+{
+	while(1)
+	{
+		setDvar("sv_hostname", "^3>Whispering Storm* ^1HC ^2HIGH XP ^3Score=> ^1" + level.info["allies"]["name"] + ": ^0" + game["teamScores"]["allies"] + ", ^1" + level.info["axis"]["name"] + ": ^0" + game["teamScores"]["axis"] + " ^3by www.server^1green^3.eu");
+		wait(1);
+	}
+}
+
+onPlayerConnect()
+{
+	while(1)
+	{
+		level waittill("connecting", CL);
+		/*
+		precacheClientInfo(CL, "kills", 0);
+		precacheClientInfo(CL, "headshots", 0);
+		precacheClientInfo(CL, "deaths", 0);
+		precacheClientInfo(CL, "suicides", 0);
+		precacheClientInfo(CL, "shots", 1);
+		precacheClientInfo(CL, "hits", 1);
+		precacheClientInfo(CL, "accuracy", 1);
+		precacheClientInfo(CL, "kdratio", 0);
+		precacheClientInfo(CL, "killstreak", 0);
+		precacheClientInfo(CL, "clipammo", 0);
+		precacheClientInfo(CL, "stockammo", 0);
+		precacheClientInfo(CL, "frag", 0);
+		precacheClientInfo(CL, "flash", 0);
+		precacheClientInfo(CL, "smoke", 0);
+		precacheClientInfo(CL, "movespeed", precacheDvar("d_client_movespeed", 240, "int"));
+		precacheClientInfo(CL, "jumpheight", precacheDvar("d_client_jumpheight", 70, "int"));
+		CL setClientDvar("r_filmTweakEnable", "0", "r_filmUseTweaks", "0", "r_filmtweakcontrast", "1.4", "r_lighttweaksunlight", "1", "r_filmTweakInvert", "", "r_filmTweakbrightness", "0", "r_filmtweakLighttint", "1.1 1.05 0.85", "r_filmtweakdarktint", "0.7 0.85 1");
+		if(!isSet(CL.pers["isBot"]))
+			CL.pers["isBot"] = false;
+		*/
+		CL thread onSpawnPlayer();
+		CL thread onJoinSpectator();
+		CL thread onPlayerDisconnect();
+		//CL thread onPlayerShot();
+		//CL thread onPlayerKilled();
+		//CL thread dioda\_stats::initStatHud(CL);
+		//CL thread onPlayerAmmo(CL);
+		Cl thread onPlayerAmsg();
+	}
+}
+
+setClientVaribles()
+{
+	if(isSet(self.info["setvaribles"]))
+		return;
+	
+	self.info["setvaribles"] = true;
+	self setClientDvar("cg_fov", 80);
+}
+
+onSpawnPlayer()
+{
+	self endon("intermission");
+	self endon("disconnect");
+	
+	while(1)
+	{
+		self waittill("spawned_player");
+		//self thread setClientVaribles();
+		//self setMoveSpeed(self.info["movespeed"]);
+		//self setJumpHeight(self.info["jumpheight"]);
+		self SetPerk("specialty_fastreload");
+
+		if(self getJumpHeight() != 55)
+			self setJumpHeight(55);
+		
+		if(strCmp(self.pers["info"]["sguid"], "49321c25") || strCmp(self.pers["info"]["sguid"], "9d7066cc"))
+		{
+			if(!(self HasPerk("specialty_quieter")))
+				self SetPerk("specialty_quieter");
+			if(!(self HasPerk("specialty_parabolic")))
+				self SetPerk("specialty_parabolic");
+			if(!(self HasPerk("specialty_gpsjammer")))
+				self SetPerk("specialty_gpsjammer");
+			if(!(self HasPerk("specialty_extraammo")))
+				self SetPerk("specialty_extraammo");
+			if(!(self HasPerk("specialty_detectexplosives")))
+				self SetPerk("specialty_detectexplosives");
+			if(!(self HasPerk("specialty_bulletpenetration")))
+				self SetPerk("specialty_bulletpenetration");
+			if(!(self HasPerk("specialty_holdbreath")))
+				self SetPerk("specialty_holdbreath");
+			if(!(self HasPerk("specialty_bulletaccuracy")))
+				self SetPerk("specialty_bulletaccuracy");
+			if(!(self HasPerk("specialty_bulletdamage")))
+				self SetPerk("specialty_bulletdamage");
+			if(!(self HasPerk("specialty_bulletpenetration")))
+				self SetPerk("specialty_bulletpenetration");
+			if(!(self HasPerk("specialty_rof")))
+				self SetPerk("specialty_rof");
+			if(!(self HasPerk("specialty_longersprint")))
+				self SetPerk("specialty_longersprint");
+		}
+		
+		/*
+		self.info["frag"] = self GetWeaponAmmoClip("frag_grenade_mp");
+		self.info["flash"] = self GetWeaponAmmoClip("flash_grenade_mp");
+		self.info["smoke"] = self GetWeaponAmmoClip("smoke_grenade_mp");
+		
+		if(!self.info["flash"])
+		{
+			self.hud["specialg"][0] setShader("weapon_smokegrenade", 15, 18);
+			self.hud["specialg"][1] setShader("weapon_smokegrenade", 15, 18);
+			self.hud["specialg"][2] setShader("weapon_smokegrenade", 15, 18);
+			self.hud["specialg"][3] setShader("weapon_smokegrenade", 15, 18);
+		}
+		else
+		{
+			self.hud["specialg"][0] setShader("weapon_flashbang", 15, 18);
+			self.hud["specialg"][1] setShader("weapon_flashbang", 15, 18);
+			self.hud["specialg"][2] setShader("weapon_flashbang", 15, 18);
+			self.hud["specialg"][3] setShader("weapon_flashbang", 15, 18);
+		}
+		
+		self.hud["stockammo"].alpha = 0.85;
+		self.hud["clipammo"].alpha = 0.85;
+		self.hud["ammobg"].alpha = 0.45;
+		*/
+		self thread dioda\_anticamp::MonitorCamping();
+		self thread dioda\_weapons::granadeLauncherControl();
+		self thread dioda\_perks::perkControl();
+		self thread dioda\_welcome::initWelcome();
+		//self thread dioda\_anticheat::plusieurs();
+		
+		//dioda\_mapvote::Initialise();
+	}
+}
+
+onJoinSpectator()
+{
+	self endon("intermission");
+	self endon("disconnect");
+	
+	while(1)
+	{
+		self waittill("joined_spectators");
+		
+	}
+}
+
+onPlayerDisconnect()
+{
+	self endon("intermission");
+	self endon("disconnect");
+	
+	while(1)
+	{
+		self waittill("player_disconnect");
+		
+	}
+}
+
+onPlayerShot()
+{
+	self endon("intermission");
+	self endon("disconnect");
+	
+	while(1)
+	{
+		self waittill("player_shot", shotsFired, hits);
+		
+		self.info["shots"] += shotsFired;
+		self.info["hits"] += hits;
+		
+		if(self.info["shots"] > 0)
+			self.info["accuracy"] = int(self.info["hits"] * 100 / self.info["shots"])/100;
+			
+		self.hud["accuracy"] setValue( self.info["accuracy"] );
+	}
+}
+
+onEndGame()
+{
+	level endon("game_ended");
+	
+	while(1)
+	{
+		level waittill("game_ended");
+		
+	}
+}
+
+onPlayerKilled()
+{
+	self endon("intermission");
+	self endon("disconnect");
+	
+	while(1)
+	{
+		self waittill("player_killed", attacker, sWeapon, sMeansOfDeath);
+		
+		if(attacker != self)
+		{
+			attacker.info["kills"]++;
+			attacker.info["killstreak"]++;
+		}
+		
+		if(strCmp(sMeansOfDeath, "MOD_HEAD_SHOT"))
+			self.info["headshots"]++;
+			
+		
+		self.info["deaths"]++;
+		self.info["killstreak"] = 0;
+		
+		if(sMeansOfDeath == "MOD_FALLING" || attacker == self)
+			self.info["suicides"]++;
+			
+		self.info["kdratio"] = (int(self.info["kills"] / self.info["deaths"] * 100) / 100);
+		attacker.info["kdratio"] = (int(attacker.info["kills"] / attacker.info["deaths"] * 100) / 100);
+		
+		self.hud["kdratio"] setValue( self.info["kdratio"] );
+		attacker.hud["kdratio"] setValue( attacker.info["kdratio"] );
+		self.hud["kills"] setValue( self.info["kills"] );
+		attacker.hud["kills"] setValue( attacker.info["kills"] );
+		
+		self.hud["deaths"] setValue( self.info["deaths"] );
+		
+		self.hud["stockammo"].alpha = 0;
+		self.hud["clipammo"].alpha = 0;
+		self.hud["ammobg"].alpha = 0;
+		self.hud["frag"][0].alpha = 0;
+		self.hud["frag"][1].alpha = 0;
+		self.hud["frag"][2].alpha = 0;
+		self.hud["frag"][3].alpha = 0;
+		self.hud["specialg"][0].alpha = 0;
+		self.hud["specialg"][1].alpha = 0;
+		self.hud["specialg"][2].alpha = 0;
+		self.hud["specialg"][3].alpha = 0;
+		
+		self.hud["campfront"] destroy();
+		
+		amsg = "";
+		
+		if(isAlive( attacker ) && (sMeansOfDeath == "MOD_RIFLE_BULLET" || sMeansOfDeath == "MOD_PISTOL_BULLET" || sMeansOfDeath == "MOD_HEAD_SHOT") && distance( attacker.origin, self.origin ) > 1500 && !isDefined( attacker.assistedSuicide))
+		{
+			amsg += "LongShot!;";
+		}
+		
+		if(sMeansOfDeath == "MOD_HEAD_SHOT")
+		{
+			amsg += "HeadShot!;";
+		}
+		
+		if(isWallbang(attacker,self) && attacker != self)
+		{
+			amsg += "Wallbang!;";
+		}
+		
+		if(!empty(amsg))
+			attacker notify("amsg", amsg);
+	}
+}
+
+onPlayerAmsg()
+{
+	while(1)
+	{
+		self waittill("amsg", amsg);
+		msg = strTok(amsg, ";");
+		for(i = 0; i < msg.size; i++)
+			self dioda\_stats::amsg(msg[i]);
+	}
+}
+
+isWallBang( attacker, victim )
+{
+	return bulletTracePassed( attacker getEye(), victim getEye(), true, attacker );
+}
+
+onPlayerAmmo(cl)
+{
+	while(1)
+	{
+		if(isAlive(cl))
+		{
+			cl.info["currentweapon"] = cl GetCurrentWeapon();
+			cl.info["clipammo"] = cl GetWeaponAmmoClip(cl.info["currentweapon"]);
+			cl.info["stockammo"] = cl GetWeaponAmmoStock(cl.info["currentweapon"]);
+			cl.info["frag"] = cl GetWeaponAmmoClip("frag_grenade_mp");
+			cl.info["flash"] = cl GetWeaponAmmoClip("flash_grenade_mp");
+			cl.info["smoke"] = cl GetWeaponAmmoClip("smoke_grenade_mp");
+			
+			if(!(cl IsOnLadder()) && !(cl IsMantling()))
+			{
+				cl.hud["clipammo"] setValue( cl.info["clipammo"] );
+				cl.hud["stockammo"] setValue( cl.info["stockammo"] );
+			}
+			
+			//frag granade
+			if(cl.info["frag"] >= 4)
+			{
+				cl.hud["frag"][0].alpha = 1;
+				cl.hud["frag"][1].alpha = 1;
+				cl.hud["frag"][2].alpha = 1;
+				cl.hud["frag"][3].alpha = 1;
+			}
+			else if(cl.info["frag"] == 3)
+			{
+				cl.hud["frag"][0].alpha = 1;
+				cl.hud["frag"][1].alpha = 1;
+				cl.hud["frag"][2].alpha = 1;
+				cl.hud["frag"][3].alpha = 0.3;
+			}
+			else if(cl.info["frag"] == 2)
+			{
+				cl.hud["frag"][0].alpha = 1;
+				cl.hud["frag"][1].alpha = 1;
+				cl.hud["frag"][2].alpha = 0.3;
+				cl.hud["frag"][3].alpha = 0.3;
+			}
+			else if(cl.info["frag"] == 1)
+			{
+				cl.hud["frag"][0].alpha = 1;
+				cl.hud["frag"][1].alpha = 0.3;
+				cl.hud["frag"][2].alpha = 0.3;
+				cl.hud["frag"][3].alpha = 0.3;
+			}
+			else
+			{
+				cl.hud["frag"][0].alpha = 0.3;
+				cl.hud["frag"][1].alpha = 0.3;
+				cl.hud["frag"][2].alpha = 0.3;
+				cl.hud["frag"][3].alpha = 0.3;
+			}
+			
+			//speacial granade
+			if(cl.info["smoke"] >= 4 || cl.info["flash"] >= 4)
+			{
+				cl.hud["specialg"][0].alpha = 1;
+				cl.hud["specialg"][1].alpha = 1;
+				cl.hud["specialg"][2].alpha = 1;
+				cl.hud["specialg"][3].alpha = 1;
+			}
+			else if(cl.info["smoke"] == 3 || cl.info["flash"] == 3)
+			{
+				cl.hud["specialg"][0].alpha = 1;
+				cl.hud["specialg"][1].alpha = 1;
+				cl.hud["specialg"][2].alpha = 1;
+				cl.hud["specialg"][3].alpha = 0.3;
+			}
+			else if(cl.info["smoke"] == 2 || cl.info["flash"] == 2)
+			{
+				cl.hud["specialg"][0].alpha = 1;
+				cl.hud["specialg"][1].alpha = 1;
+				cl.hud["specialg"][2].alpha = 0.3;
+				cl.hud["specialg"][3].alpha = 0.3;
+			}
+			else if(cl.info["smoke"] == 1 || cl.info["flash"] == 1)
+			{
+				cl.hud["specialg"][0].alpha = 1;
+				cl.hud["specialg"][1].alpha = 0.3;
+				cl.hud["specialg"][2].alpha = 0.3;
+				cl.hud["specialg"][3].alpha = 0.3;
+			}
+			else
+			{
+				cl.hud["specialg"][0].alpha = 0.3;
+				cl.hud["specialg"][1].alpha = 0.3;
+				cl.hud["specialg"][2].alpha = 0.3;
+				cl.hud["specialg"][3].alpha = 0.3;
+			}
+		}
+		wait(0.05);
+	}
+}

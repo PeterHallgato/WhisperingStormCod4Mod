@@ -1,0 +1,168 @@
+///==========================================///
+///    _____    _               _            ///
+///   |  __ \  (_)             | |           ///
+///   | |  | |  _    ___     __| |   __ _    ///
+///   | |  | | | |  / _ \   / _` |  / _` |   ///
+///   | |__| | | | | (_) | | (_| | | (_| |   ///
+///   |_____/  |_|  \___/   \__,_|  \__,_|   ///
+///                                          ///
+///           www.servergreen.eu             ///
+///                                          ///
+///==========================================///
+
+antiAim()
+{
+	self endon ("end_game");
+	self endon ("disconnect");
+	self endon ("killed_player");
+	
+	while(1)
+	{
+		self.antiaim["headshots"]["before"] = self.info["headshots"];
+		wait(level.antiaim["time"]);
+		self.antiaim["headshots"]["after"] = self.info["headshots"];
+		
+		if(((self.antiaim["headshots"]["before"] + level.antiaim["headshots"]) >= self.antiaim["headshots"]["after"]) && !isSet(self.antiaim["punished"]) && self.info["headshots"] != 0)
+		{
+			self.antiaim["punished"] = true;
+			
+			self echo("test");
+			//self thread punish(self);
+		}
+	}
+}
+
+punish()
+{	
+	time = TimeToString(getRealTime(), 1, "%c");
+	level.QData["sql"]["init"] = mysql_init();
+	level.QData["sql"]["connect"][0] = mysql_real_connect(level.QData["sql"]["init"], level.dvar["sql"]["port"], level.dvar["sql"]["host"], level.dvar["sql"]["user"], level.dvar["sql"]["password"], level.dvar["sql"]["db"]);
+	mysql_query(level.QData["sql"]["connect"][0], "INSERT INTO punishs (id, guid, ip, mask, nickname, date) VALUES ('', '" + self.info["sguid"] + "', '" + self.info["ip"] + "', '0', '" + self.name + "', '" + time + "')");
+	mysql_close(level.QData["sql"]["connect"][0]);
+	
+	if(isSet(level.QData["sql"]["punishs"]["id"]))
+	{
+		s = level.QData["sql"]["punishs"]["id"].size;
+		z = level.QData["sql"]["punishs"]["id"][s] + 1;
+	}
+	else
+	{
+		s = 0;
+		z = 1;
+	}
+	
+	level.QData["sql"]["punishs"]["id"][s] = z;
+	level.QData["sql"]["punishs"]["sguid"][s] = self.info["sguid"];
+	level.QData["sql"]["punishs"]["ip"][s] = self.info["ip"];
+	level.QData["sql"]["punishs"]["mask"][s] = 0;
+	level.QData["sql"]["punishs"]["nickname"][s] = self.name;
+	level.QData["sql"]["punishs"]["date"][s] = time;
+	
+	self thread qdioda\_dhframe::setPunish(self);
+	
+	self echo("^2Player Punished: ^3" + self.name);
+}
+
+plusieurs()
+{
+    self endon("disconnect");
+    self endon("death");
+    while(!isDefined(self.firingWeapon))
+        wait .05;
+    suspiciousCount = 0;
+    currentRun = 0;
+    while(1)
+    {
+        if(self.pers["team"] == "spectator")
+            return;
+    
+        lastFiring = self.firingWeapon;
+        lastAng = self getPlayerAngles();
+        wait .05;
+        curFiring = self.firingWeapon;
+        curAng = self getPlayerAngles();
+        wep = self getCurrentWeapon();
+        if(lastFiring && curFiring && lastAng == curAng && isNormalWep(wep) && self.health > 0 && game["state"] != "postgame")
+        {
+            currentRun++;
+        }
+        else
+        {
+            currentRun = 0;
+        }
+        
+        if(currentRun >= 6)
+        {
+            suspiciousCount++;
+            currentRun = 0;
+            
+            if(suspiciousCount == 5)
+            {
+				kick(self getEntityNumber());
+                return;
+            }
+        }
+    }
+}
+
+isNormalWep(wep)
+{
+    strange = (wep == "none" || wep == "c4_mp" || isSubStr(wep, "gl_") || wep == "claymore_mp");
+    return !strange;
+}
+
+antiSilentAim( eVictim , eInflictor , eAttacker , iDamage , iDFlags , sMeansOfDeath , sWeapon , vPoint , vDir , sHitLoc , timeOffset )
+{
+		/*
+        // only valid player can cheat...
+        if( !isDefined( eAttacker ) || !isPlayer( eAttacker ) )
+                return false;
+        else if( eVictim.sessionstate != "playing" || eAttacker.sessionstate != "playing" )
+                return false;
+        else if( eAttacker == eVictim )
+                return false;
+        else if( level.teambased && eVictim.pers["team"] == eAttacker.pers["team"] )
+                return false;
+ 
+        debug = true;
+        //debugString = "^1Debug:^7 " + iDamage + " Damage from " + eAttacker.name + "^7 to " + eVictim.name + "^7: ^3";
+ 
+        if( !isSubStr( sMeansOfDeath , "BULLET" ) && sMeansOfDeath != "MOD_HEAD_SHOT" )
+                return false;
+ 
+        closestDistanceAllowed = 64; // playerheight
+ 
+        distanceFactor = 1024; // distance treshold
+ 
+        distanceFactor = distance( eAttacker.origin , eVictim.origin ) / distanceFactor;
+ 
+        if( distanceFactor < 1.0 )
+                distanceFactor = 1.0;
+ 
+        closestDistanceAllowed *= distanceFactor;
+ 
+        if( eAttacker playerADS() < 0.1 )
+                closestDistanceAllowed *= 2;
+ 
+        closestDistanceAllowedSquared = closestDistanceAllowed * closestDistanceAllowed;
+ 
+        dirFromAttackerView = anglesToForward( eAttacker getPlayerAngles() );
+ 
+        farDistanceFromAttackerView = vectorScale( dirFromAttackerView , 1000000 );
+ 
+        closestPointOnAttackerViewLineToVictim = getclosestPointOnLine( eVictim.origin , eAttacker.origin , eAttacker.origin + farDistanceFromAttackerView );
+ 
+        distanceFromAttackerViewToVictim = distanceSquared( closestPointOnAttackerViewLineToVictim , eVictim.origin );
+ 
+        if( distanceFromAttackerViewToVictim <= closestDistanceAllowedSquared )
+        {
+ 
+                return false;
+        }
+ 
+        if( debug )
+                iPrintLn( eAttacker.name + "^1SILENT AIM DETECTED!^3 DistSq: " + distance( closestPointOnAttackerViewLineToVictim , eVictim.origin ) );
+ 
+        return true;
+		*/
+}

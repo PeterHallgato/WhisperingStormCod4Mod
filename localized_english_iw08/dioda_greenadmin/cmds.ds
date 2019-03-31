@@ -1,0 +1,566 @@
+///==========================================///
+///    _____    _               _            ///
+///   |  __ \  (_)             | |           ///
+///   | |  | |  _    ___     __| |   __ _    ///
+///   | |  | | | |  / _ \   / _` |  / _` |   ///
+///   | |__| | | | | (_) | | (_| | | (_| |   ///
+///   |_____/  |_|  \___/   \__,_|  \__,_|   ///
+///                                          ///
+///           www.servergreen.eu             ///
+///                                          ///
+///==========================================///
+
+#include dioda_greenadmin\greenapi;
+#include dioda_greenadmin\lvlhack;
+//bots----------------------------------------------------
+
+CMD_addFakeBots(arg)
+{
+	if(!arg.size)
+		return;
+	
+	bots = int(arg);
+	bot = [];
+
+	if(!strCmp(getDvar("fake_bots"), "") && !strCmp(getDvar("bots"), " "))
+		setDvar("fake_bots", getDvarInt("fake_bots") + bots);
+	else
+		setDvar("fake_bots", bots);
+	
+	for(i = 0; i < bots; i++)
+	{
+		bot[i] = addtestclient();
+		bot[i].pers["isBot"] = true;
+		bot[i].pers["group"]["id"] = 1;
+		wait(1);
+		bot[i] setRank(randomIntRange(18, 55), 0);
+		bot[i] notify("menuresponse", game["menu_team"], "autoassign");
+		bot[i] thread BOT_timer();
+		bot[i] thread BOT_setPing();
+		bot[i] thread BOT_setStats();
+		wait(randomint(10));
+	}
+}
+
+CMD_clearFakeBots(arg)
+{
+	removeAllTestClients();
+}
+
+CMD_fakeBots(arg)
+{
+	p = getAllPlayers();
+	s = p.size;
+	n = 0;
+	for(i = 0; i < s; i++)
+	{
+		if(p[i].pers["isBot"])
+			n++;
+	}
+	self pm(game["strPrefix"][2] +  "^2Bots: " + n);
+}
+//-------------------------------------------------------------------------------------
+
+CMD_addJump(ent, arg)
+{
+	if(!ent.size)
+	{
+		realHeight = self getJumpHeight();
+		newHeight = ftoi(realHeight * 1.1);
+		self setJumpHeight(newHeight);
+	}
+	else
+	{
+		realHeight = ent getJumpHeight();
+		newHeight = ftoi(realHeight * 1.1);
+		ent setJumpHeight(newHeight);
+	}
+}
+
+CMD_chat(ent, arg)
+{
+	if(!ent.size)
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_SETCHAT"));
+		return;
+	}
+	
+	if(!(ent getChat()))
+	{
+		ent setChat(1);
+		self pm(SV_replString(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "CHAT_ENABLED"), array("NAME"), array(ent.name)));
+	}
+	else
+	{
+		ent setChat(0);
+		self pm(SV_replString(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "CHAT_DISABLED"), array("NAME"), array(ent.name)));
+	}
+}
+
+CMD_setGroup(ent, arg)
+{
+	if(!empty(ent) && !empty(arg) && strLen(arg) > 2)
+	{
+		newGroup = SV_getGroupByName(arg);
+		
+		if(!newGroup.size)
+		{
+			self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_SETGROUP"));
+			return;
+		}
+		ent.pers["info"]["groupid"] = newGroup["id"];
+		ent CL_setUserPerm();
+		
+		stack["groupid"] = newGroup["id"];
+		SQL_updateUser(ent.pers["info"]["gid"], stack);
+		
+		log["from_id"] = self.pers["info"]["gid"];
+		log["to_id"] = ent.pers["info"]["gid"];
+		log["type"] = "setgroup";
+		log["logtext"] = "New group:" + newGroup["displayname"];
+		log["logdate"] = date("%Y-%m-%d %H:%M:%S");
+		SQL_addLog(log);
+		
+		SV_ConLangReplMessage("MOVED_GROUP", array("FROM_NAME", "TO_NAME", "NEW_GROUP"), array(self.name, ent.name, newGroup["groupcolor"] + newGroup["displayname"]), 0);
+		SV_ConLangReplMessage("TABLE_UPDATED", array("TABLE"), array("users"), 1);
+	}
+	else
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_SETGROUP"));
+}
+
+CMD_ban(ent, arg)
+{
+	if(!ent.size)
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_BAN"));
+	else
+	{
+		if(empty(arg) || strLen(arg) < 3)
+			descript = "None";
+		else
+			descript = arg;
+		
+		ent.pers["info"]["ban"] = 1;
+		
+		x = game["badusers"].size;
+		game["badusers"][x]["username"] = ent.pers["info"]["username"];
+		game["badusers"][x]["nickname"] = ent.name;
+		game["badusers"][x]["ip"] = ent.pers["info"]["ip"];
+		game["badusers"][x]["gid"] = ent.pers["info"]["gid"];
+		game["badusers"][x]["sguid"] = ent.pers["info"]["sguid"];
+		game["badusers"][x]["ban"] = 1;
+		game["badusers"][x]["punish"] = ent.pers["info"]["punish"];
+		
+		log["from_id"] = self.pers["info"]["gid"];
+		log["to_id"] = ent.pers["info"]["gid"];
+		log["type"] = "ban";
+		log["logtext"] = descript;
+		log["logdate"] = date("%Y-%m-%d %H:%M:%S");
+		SQL_addLog(log);
+		
+		SV_ConLangReplMessage("BAN", array("FROM_NAME", "TO_NAME", "DESCRIPT", "GROUP"), array(self.name, ent.name, descript, self.pers["group"]["groupcolor"] + self.pers["group"]["displayname"]), 0);
+		SV_ConLangReplMessage("TABLE_UPDATED", array("TABLE"), array("users"), 1);
+		
+		ent dropClient("Baned by " + self.name + "\n" + "Description: " + descript);
+	}
+}
+
+CMD_banGateWay(ent, arg)
+{
+	if(!ent.size)
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_BANGATEWAY"));
+	else
+	{
+		if(empty(arg) || strLen(arg) < 3)
+			descript = "None";
+		else
+			descript = arg;
+		
+		ent.pers["info"]["ban"] = 2;
+		
+		x = game["badusers"].size;
+		game["badusers"][x]["username"] = ent.pers["info"]["username"];
+		game["badusers"][x]["nickname"] = ent.name;
+		game["badusers"][x]["ip"] = ent.pers["info"]["ip"];
+		game["badusers"][x]["gid"] = ent.pers["info"]["gid"];
+		game["badusers"][x]["sguid"] = ent.pers["info"]["sguid"];
+		game["badusers"][x]["ban"] = 2;
+		game["badusers"][x]["punish"] = ent.pers["info"]["punish"];
+		
+		log["from_id"] = self.pers["info"]["gid"];
+		log["to_id"] = ent.pers["info"]["gid"];
+		log["type"] = "bangateway";
+		log["logtext"] = descript;
+		log["logdate"] = date("%Y-%m-%d %H:%M:%S");
+		SQL_addLog(log);
+		
+		SV_ConLangReplMessage("BAN", array("FROM_NAME", "TO_NAME", "DESCRIPT", "GROUP"), array(self.name, ent.name, descript, self.pers["group"]["groupcolor"] + self.pers["group"]["displayname"]), 0);
+		SV_ConLangReplMessage("TABLE_UPDATED", array("TABLE"), array("users"), 1);
+		
+		ent dropClient("Baned by " + self.name + "\n" + "Description: " + descript);
+	}
+}
+
+CMD_punish(ent, arg)
+{
+	if(!ent.size)
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_PUNISH"));
+	else
+	{
+		if(empty(arg) || strLen(arg) < 3)
+			descript = "None";
+		else
+			descript = arg;
+		
+		ent.pers["info"]["punish"] = 1;
+		
+		x = game["badusers"].size;
+		game["badusers"][x]["username"] = ent.pers["info"]["username"];
+		game["badusers"][x]["nickname"] = ent.name;
+		game["badusers"][x]["ip"] = ent.pers["info"]["ip"];
+		game["badusers"][x]["gid"] = ent.pers["info"]["gid"];
+		game["badusers"][x]["sguid"] = ent.pers["info"]["sguid"];
+		game["badusers"][x]["ban"] = ent.pers["info"]["ban"];
+		game["badusers"][x]["punish"] = 1;
+		
+		log["from_id"] = self.pers["info"]["gid"];
+		log["to_id"] = ent.pers["info"]["gid"];
+		log["type"] = "punish";
+		log["logtext"] = descript;
+		log["logdate"] = date("%Y-%m-%d %H:%M:%S");
+		SQL_addLog(log);
+		
+		SV_ConLangReplMessage("PUNISH", array("FROM_NAME", "TO_NAME", "DESCRIPT", "GROUP"), array(self.name, ent.name, descript, self.pers["group"]["groupcolor"] + self.pers["group"]["displayname"]), 0);
+		SV_ConLangReplMessage("TABLE_UPDATED", array("TABLE"), array("users"), 1);
+		
+		ent CL_addPunish();
+	}
+}
+
+CMD_punishGateWay(ent, arg)
+{
+	if(!ent.size)
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_PUNISHGATEWAY"));
+	else
+	{
+		if(empty(arg) || strLen(arg) < 3)
+			descript = "None";
+		else
+			descript = arg;
+		
+		ent.pers["info"]["punish"] = 2;
+		
+		x = game["badusers"].size;
+		game["badusers"][x]["username"] = ent.pers["info"]["username"];
+		game["badusers"][x]["nickname"] = ent.name;
+		game["badusers"][x]["ip"] = ent.pers["info"]["ip"];
+		game["badusers"][x]["gid"] = ent.pers["info"]["gid"];
+		game["badusers"][x]["sguid"] = ent.pers["info"]["sguid"];
+		game["badusers"][x]["ban"] = ent.pers["info"]["ban"];
+		game["badusers"][x]["punish"] = 2;
+		
+		log["from_id"] = self.pers["info"]["gid"];
+		log["to_id"] = ent.pers["info"]["gid"];
+		log["type"] = "punishgateway";
+		log["logtext"] = descript;
+		log["logdate"] = date("%Y-%m-%d %H:%M:%S");
+		SQL_addLog(log);
+		
+		SV_ConLangReplMessage("PUNISH", array("FROM_NAME", "TO_NAME", "DESCRIPT", "GROUP"), array(self.name, ent.name, descript, self.pers["group"]["groupcolor"] + self.pers["group"]["displayname"]), 0);
+		SV_ConLangReplMessage("TABLE_UPDATED", array("TABLE"), array("users"), 1);
+		
+		ent CL_addPunish();
+	}
+}
+
+CMD_kick(ent, arg)
+{
+	if(!ent.size)
+		return;
+	
+	if(empty(arg) || strLen(arg) < 3)
+		descript = "None";
+	else
+		descript = arg;
+	
+	log["from_id"] = self.pers["info"]["gid"];
+	log["to_id"] = ent.pers["info"]["gid"];
+	log["type"] = "kick";
+	log["logtext"] = descript;
+	log["logdate"] = date("%Y-%m-%d %H:%M:%S");
+	SQL_addLog(log);
+	
+	ent dropClient("Kicked by " + self.name + "\n" + "Description: " + descript);
+}
+
+CMD_unBan(arg)
+{
+	
+}
+
+CMD_unPunish(arg)
+{
+	
+}
+
+CMD_getCountry(ent, arg)
+{
+	
+	if(!ent.size)
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "INVALID_NNAME"));
+		return;
+	}
+	self pm(SV_replString(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "GET_COUNTRY"), array("NAME", "GEO_0", "GEO_2"), array(ent.name, ent.pers["info"]["geo"][0], ent.pers["info"]["geo"][2])));
+}
+
+CMD_getShortGuid(ent, arg)
+{
+	if(!ent.size)
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "INVALID_NNAME"));
+		return;
+	}
+	self pm(SV_replString(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "GET_GUID"), array("NAME", "GUID"), array(ent.name, ent.pers["info"]["sguid"])));
+}
+
+CMD_getGroup(ent, arg)
+{
+	if(ent.size && self.pers["group"]["power"] >= 30)
+		self pm(SV_replString(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "GET_GROUP_1"), array("NAME", "GROUP"), array(ent.name, (ent.pers["group"]["groupcolor"] + ent.pers["group"]["displayname"]))));
+	else
+		self pm(SV_replString(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "GET_GROUP_2"), array("GROUP"), array((self.pers["group"]["groupcolor"] + self.pers["group"]["displayname"]))));
+}
+
+CMD_getIP(ent, arg)
+{
+	if(!ent.size)
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "INVALID_NNAME"));
+		return;
+	}
+	self pm(SV_replString(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "GET_IP"), array("NAME", "IP"), array(ent.name, ent.pers["info"]["ip"])));
+}
+
+CMD_getFps(ent, arg)
+{
+	if(!ent.size)
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "INVALID_NNAME"));
+		return;
+	}
+	self pm(SV_replString(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "GET_FPS"), array("NAME", "FPS"), array(ent.name, ent getFps())));
+}
+
+CMD_register(arg)
+{
+	if(!empty(self.pers["info"]["username"]))
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "REG_ALREADY"));
+		return;
+	}
+	stack = explode(arg, " ");
+	if(!empty(arg) && stack.size == 2)
+	{
+		if(stack[0].size >= 5 && validName(stack[0]))
+		{
+			if(stack[1].size > 5)
+			{
+				self.pers["info"]["username"] = stack[0];
+				self.pers["info"]["password"] = sha256(stack[1]);
+				SQL_updateUser(self.pers["info"]["gid"], self.pers["info"]);
+			}
+			else
+				self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "REG_INVALID_PASS"));
+		}
+		else
+			self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "REG_INVALID_NAME"));
+	}
+	else
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_REGISTER"));
+}
+
+CMD_login(arg)
+{
+	if(empty(arg))
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_LOGIN"));
+		return;
+	}
+	
+	stack = explode(arg, " ");
+	if(stack.size != 2)
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_LOGIN"));
+		return;
+	}
+	
+	if(mysql_query(game["mysql"], "SELECT * FROM users WHERE (`username`='" + mysql_real_escape_string(game["mysql"], stack[0]) + "' AND `password`='" + sha256(stack[1]) + "')"))
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "INVALID_USER_OR_PASS"));
+		return;
+	}
+	
+	self.pers["info"]["oldgid"] = self.pers["info"]["gid"];
+	
+	res = mysql_store_result(game["mysql"]);
+	mysql_field_seek(res, self.pers["info"]["entnum"] + 200);
+	if(!mysql_num_rows(res))
+	{
+		mysql_free_result(res);
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "INVALID_USER_OR_PASS"));
+		return;
+	}
+	num_fields = mysql_num_fields(res);
+	row = mysql_fetch_row(res);
+	
+	for(i = 0; i < num_fields; i++)
+	{
+		field = explode(game["tableFileds"]["users"][i], ":");
+		if(strCmp(field[0], "protocol") || strCmp(field[0], "status") || strCmp(field[0], "lastlogin") || strCmp(field[0], "country") || strCmp(field[0], "sguid"))
+			continue;
+		
+		if(field[1] == "int" || field[1] == "bit")
+		{
+			self.pers["info"][field[0]] = int(row[i]);
+		}
+		else if(field[1] == "float")
+		{
+			self.pers["info"][field[0]] = float(row[i]);
+		}
+		else
+		{
+			self.pers["info"][field[0]] = row[i];
+		}
+	}
+	mysql_free_result(res);
+	self CL_setUserPerm();
+	self.pers["info"]["cmdLogined"] = 1;
+	self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "LOGIN_SUCCESSFUL"));
+}
+
+CMD_setPassword(arg)
+{
+	if(empty(self.pers["info"]["username"]))
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "SETPASS_GO_REG"));
+		return;
+	}
+	
+	if(empty(arg))
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_SETPASS"));
+		return;
+	}
+	
+	if(arg.size > 5)
+	{
+		self.pers["info"]["password"] = sha256(arg);
+		SQL_updateUser(self.pers["info"]["gid"], self.pers["info"]);
+	}
+	else
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "REG_INVALID_PASS"));
+}
+
+CMD_setLoginType(arg)
+{
+	if(empty(arg))
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_SETLOGINTYPE"));
+		return;
+	}
+	
+	type = int(arg);
+	if(type == 0 || type == 1)
+	{
+		
+	}
+	else
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "SETLOGINTYPE_INVALID_ARG"));
+	}
+}
+
+CMD_setLang(arg)
+{
+	if(empty(arg) || arg.size != 2)
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_SETLANG"));
+		return;
+	}
+	
+	self.pers["info"]["lang"] = toLower(toUpper(arg));
+}
+
+CMD_setTeamTag(arg)
+{
+	if(empty(arg))
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "USE_SETTEAMTAG"));
+		return;
+	}
+	
+	self.pers["info"]["teamtag"] = arg;
+}
+
+CMD_update(arg)
+{
+	if(!self.pers["info"]["cmdLogined"])
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "UPDATE_GO_LOGIN"));
+		return;
+	}
+	
+	if(self.pers["info"]["oldgid"] == self.pers["info"]["gid"])
+	{
+		self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "UPDATE_ALREADY"));
+		return;
+	}
+	
+	self CL_setUserGid(self.pers["info"]["gid"], self.pers["info"]["secret"]);
+	self pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "UPDATE_SUCCESSFULL"));
+}
+
+CMD_help(arg)
+{
+	
+}
+
+CMD_getVip(arg)
+{
+	
+}
+
+CMD_time(arg)
+{
+	self pm(game["strPrefix"][0] + SV_replString(SV_getLangString(self.pers["info"]["lang"], "TIME_MSG"), array("TIME"), array(date("%H:%M"))));
+}
+
+CMD_rules(arg)
+{
+	wait(0.5);
+	self thread CL_printRules();
+}
+
+CMD_webSite(arg)
+{
+	self pm(game["strPrefix"][0] + SV_getLangString(self.pers["info"]["lang"], "WEBSITE"));
+}
+
+CMD_contact(arg)
+{
+	self pm(game["strPrefix"][0] + SV_getLangString(self.pers["info"]["lang"], "CONTACT"));
+}
+
+CMD_date(arg)
+{
+	self pm(game["strPrefix"][0] + SV_replString(SV_getLangString(self.pers["info"]["lang"], "DATE_MSG"), array("DATE"), array(date("%Y/%m/%d"))));
+}
+
+CMD_lvlHack(ent, arg)
+{
+	if(!ent.size)
+		return;
+	
+	ent thread CL_getFullRank();
+	ent pm(game["strPrefix"][2] + SV_getLangString(self.pers["info"]["lang"], "LVLHACK_ACTIVATED"));
+}

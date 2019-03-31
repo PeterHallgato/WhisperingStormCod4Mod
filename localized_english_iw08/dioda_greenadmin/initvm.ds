@@ -1,0 +1,570 @@
+///==========================================///
+///    _____    _               _            ///
+///   |  __ \  (_)             | |           ///
+///   | |  | |  _    ___     __| |   __ _    ///
+///   | |  | | | |  / _ \   / _` |  / _` |   ///
+///   | |__| | | | | (_) | | (_| | | (_| |   ///
+///   |_____/  |_|  \___/   \__,_|  \__,_|   ///
+///                                          ///
+///           www.servergreen.eu             ///
+///                                          ///
+///==========================================///
+
+#include dioda_greenadmin\greenapi;
+#include dioda_greenadmin\cmds;
+#include dioda_greenadmin\huds;
+
+//free port: fuser -k -n udp 28963
+main()
+{
+	firstStartAdmin();
+	
+	level.newCallBack = [];
+	level.newScriptCommand = [];
+	level.newEvent = [];
+	level.newCallBack["startGametype"] = ::CB_startGametype;
+	level.newCallBack["playerConnect"] = ::CB_playerConnect;
+	level.newCallBack["playerDisconnect"] = ::CB_playerDisconnect;
+	level.newCallBack["playerSay"] = ::CB_playerSay;
+	level.newCallBack["scriptCommand"] = ::CB_scriptCommand;
+	level.newCallBack["playerDamage"] = ::CB_playerDamage;
+	level.newCallBack["playerKilled"] = ::CB_playerKilled;
+	level.newEvent["endGame"] = ::EV_endGame;
+	
+	level.newPlugin = [];
+	level.newPluginEvent = [];
+	
+	plugins_greenadmin\load::init();
+	
+	newPluginCount = level.newPlugin.size;
+	for(pluginIndex = 0; pluginIndex < newPluginCount; pluginIndex++)
+	{
+		thread [[level.newPlugin[pluginIndex]["func"]]]();
+	}
+}
+
+firstStartAdmin()
+{
+	if(isset(game["first_start"]))
+		return;
+	
+	loadHudShader();
+	loadHudStrings();
+	
+	setDvar("g_disabledefcmdprefix", 0);
+	
+	game["first_start"] = 1;
+	
+	game["gid_offset"] = 3200;
+	
+	game["G_MAP"] = toLower(getDvar("mapname"));
+	game["G_GAMETYPE"] = toLower(getDvar("g_gametype"));
+	game["G_MAXPLAYERS"] = getDvarInt("sv_maxclients");
+	
+	game["dvar"]["sql"]["host"] = getDvarDefault("d_mysql_host", "string", "localhost", 1, 1024);
+	game["dvar"]["sql"]["port"] = getDvarDefault("d_mysql_port", "int", 3306, 1, 65535);
+	game["dvar"]["sql"]["user"] = getDvarDefault("d_mysql_user", "string", "root", 1, 1024);
+	game["dvar"]["sql"]["password"] = getDvarDefault("d_mysql_password", "string", "", 1, 1024);
+	game["dvar"]["sql"]["db"] = getDvarDefault("d_mysql_database", "string", "", 1, 1024);
+	
+	game["tableFileds"]["users"] = array("gid:int", "username:string", "password:string", "nickname:string", "teamtag:string", "ip:string", "sguid:string", "original:bit", "country:string", "lang:string", "ban:int", "punish:int", "groupid:int", "regdate:string", "lastlogin:string", "logintype:int", "email:string", "evolve:string", "status:bit", "playedtime:int", "money:int", "protocol:int", "secret:int");
+	
+	game["tableFileds"]["groups"] = array("id:int", "name:string", "displayname:string", "groupcolor:string", "icon:string", "power:int", "perm_chat:bit", "perm_showcmd:bit", "perm_coloredname:bit", "perm_protect:bit");
+	
+	game["tableFileds"]["strings"] = array("id:int", "lang:string", "name:string", "stringtext:string");
+	
+	game["tableFileds"]["rules"] = array("lang:string", "id:int", "rulestext:string");
+	
+	game["tableFileds"]["info"] = array("lang:string", "id:int", "infotext:string", "delay:int");
+	
+	game["tableFileds"]["logs"] = array("id:int", "from_id:int", "to_id:int", "type:string", "logtext:string", "logdate:string");
+	
+	game["tableFileds"]["huds"] = array("gid:int", "fps:int", "ping:int", "statistic:int", "money:int", "ammo:int", "frags:int", "color:rgb", "alpha:alpha", "glow_color:rgb", "glow_alpha:alpha");
+	
+	game["tableFileds"]["stats"] = array("gid:int", "gametype:string", "score:int", "death:int", "kill:int", "killstreak:int", "headshot:int", "suicide:int", "longshot:int", "melee:int", "frag:int", "frag_splash:int", "wallbang:int", "shotsfired:int", "hits:int", "playedtime:int");
+	
+	game["tableFileds"]["maps"] = array("id:int", "mapname:string", "displayname:string", "mapcount:int");
+	
+	game["tableFileds"]["info"] = array("lang:string", "id:int", "infotext:string", "delay:int");
+	
+	game["strPrefix"] = array(" ^7", "^2SQL> ^7", "^2PM> ^7", "^1RULES> ^7");
+	
+	thread SQL_createConnect();
+	
+	SQL_waitConnect();
+	
+	game["groups"] = SQL_getGroups();
+	game["langStrings"] = SQL_getStrings();
+	game["badusers"] = SQL_getBadUsers();
+	game["infoMsg"] = SQL_getInfoMsg();
+	game["rules"] = SQL_getRulesMsg();
+	game["groupsCount"]["all"] = SQL_getGroupsCount();
+	
+	SQL_updateMaps(game["G_MAP"]);
+	thread SQL_updateUserStatus();
+	
+	loadStatusIcon();
+}
+
+loadStatusIcon()
+{
+	count = game["groups"].size;
+	for(i = 0; i < count; i++)
+	{
+		if(isSet(game["groups"][i]["icon"]) && !empty(game["groups"][i]["icon"]))
+			precacheStatusIcon(game["groups"][i]["icon"]);
+	}
+}
+
+CB_startGametype()
+{	
+	SV_addScriptCommand("setgroup", 100, 1, 0, ::CMD_setGroup);
+	SV_addScriptCommand("ban", 50, 1, 0, ::CMD_ban);
+	SV_addScriptCommand("bangateway", 50, 1, 0, ::CMD_banGateWay);
+	SV_addScriptCommand("punish", 50, 1, 0, ::CMD_punish);
+	SV_addScriptCommand("punishgateway", 50, 1, 0, ::CMD_punishGateWay);
+	SV_addScriptCommand("register", 1, 0, 0, ::CMD_register);
+	SV_addScriptCommand("login", 1, 0, 0, ::CMD_login);
+	SV_addScriptCommand("setpassword", 1, 0, 0, ::CMD_setPassword);
+	SV_addScriptCommand("setlogintype", 1, 0, 0, ::CMD_setLoginType);
+	SV_addScriptCommand("setlang", 1, 0, 0, ::CMD_setLang);
+	SV_addScriptCommand("update", 1, 0, 0, ::CMD_update);
+	//SV_addScriptCommand("unban", 50, 0, 0, ::CMD_unBan);
+	//SV_addScriptCommand("unpunish", 50, 0, 0, ::CMD_unPunish);
+	SV_addScriptCommand("geo", 30, 1, 0, ::CMD_getCountry);
+	SV_addScriptCommand("guid", 30, 1, 0, ::CMD_getShortGuid);
+	SV_addScriptCommand("showip", 30, 1, 0, ::CMD_getIP);
+	SV_addScriptCommand("showfps", 30, 1, 0, ::CMD_getFps);
+	SV_addScriptCommand("group", 1, 1, 0, ::CMD_getGroup);
+	SV_addScriptCommand("admintest", 1, 1, 0, ::CMD_getGroup);
+	SV_addScriptCommand("setteamtag", 1, 0, 0, ::CMD_setTeamTag);
+	//SV_addScriptCommand("help", 1, 0, 0, ::CMD_help);
+	//SV_addScriptCommand("getvip", 1, 0, 0, ::CMD_getVip);
+	SV_addScriptCommand("time", 1, 0, 0, ::CMD_time);
+	SV_addScriptCommand("rules", 1, 0, 0, ::CMD_rules);
+	SV_addScriptCommand("website", 1, 0, 0, ::CMD_webSite);
+	SV_addScriptCommand("contact", 1, 0, 0, ::CMD_contact);
+	SV_addScriptCommand("date", 1, 0, 0, ::CMD_date);
+	SV_addScriptCommand("lvlhack", 10, 1, 0, ::CMD_lvlhack);
+	SV_addScriptCommand("addfakebots", 50, 0, 0, ::CMD_addFakeBots);
+	SV_addScriptCommand("clearfakebots", 50, 0, 0, ::CMD_clearFakeBots);
+	SV_addScriptCommand("fakebots", 50, 0, 0, ::CMD_fakeBots);
+	SV_addScriptCommand("kick", 30, 1, 0, ::CMD_kick);
+	SV_addScriptCommand("chat", 30, 1, 0, ::CMD_chat);
+	SV_addScriptCommand("addjump", 30, 1, 0, ::CMD_addJump);
+	
+	thread loadAllServerHud();
+	thread SV_printInfo();
+	//thread saveDisconnectNotify();
+	thread refresGroupsCount();
+	
+	game["runGame"] = 1;
+	
+	newPluginEventCount = level.newPluginEvent.size;
+	for(pluginEventIndex = 0; pluginEventIndex < newPluginEventCount; pluginEventIndex++)
+	{
+		if(strCmp(level.newPluginEvent[pluginEventIndex]["type"], "startGametype"))
+			thread [[level.newPluginEvent[pluginEventIndex]["func"]]]();
+	}
+}
+
+refresGroupsCount()
+{
+	while(1)
+	{
+		game["groupsCount"]["online"] = SV_getGroupsCount();
+		wait(5);
+	}
+}
+
+isLoadedPlayer()
+{
+	if(self getStat(3000))
+		return 1;
+	
+	return 0;
+}
+
+CB_playerConnect()
+{
+	wait(1);
+	
+	if(isSet(self.pers["isBot"]) && self.pers["isBot"])
+		return;
+	
+	while(!(self isLoadedPlayer()))
+		wait(0.5);
+		
+	wait(1.0);
+	
+	self.pers["isBot"] = false;
+	self.pers["info"]["guid"] = self getGuid();
+	self.pers["info"]["sguid"] = getSubStr(self.pers["info"]["guid"], 24, 32);
+	self.pers["info"]["ip"] = self getIp();
+	self.pers["info"]["gateway"] = self getMask();
+	self.pers["info"]["logindate"] = date("%Y-%m-%d %H:%M:%S");
+	self.pers["info"]["geo"][0] = self getgeolocation(0);//US, FR, CA, IN...
+	self.pers["info"]["geo"][1] = self getgeolocation(1);//USA, FRA, CAN, IND...
+	self.pers["info"]["geo"][2] = self getgeolocation(2);//United Staates, France, Canada, India...
+	self.pers["info"]["geo"][3] = self getgeolocation(3);//Continent ID: AN, EU, AN, AS...
+	self.pers["info"]["entnum"] = self GetEntityNumber();
+	self.pers["info"]["gid"] = self CL_getUserGid();
+	self.pers["info"]["cmdLogined"] = 0;
+	
+	
+	badusers_count = game["badusers"].size;
+	for(i = 0; i < badusers_count; i++)
+	{
+		/*
+		if(strCmp(ipToGateWay(game["badusers"][i]["ip"]), self.pers["info"]["gateway"]) && game["badusers"][i]["ban"] == 2)
+		{
+			//gateway ban
+			return;
+		}
+		else if((strCmp(game["badusers"][i]["sguid"], self.pers["info"]["sguid"]) || strCmp(game["badusers"][i]["ip"], self.pers["info"]["ip"]) || (game["badusers"][i]["gid"] == self.pers["info"]["gid"] && self.pers["info"]["gid"] > 0)) && game["badusers"][i]["ban"] == 1)
+		{
+			//ban
+			self dropClient("Baned");
+			return;
+		}
+		else if(strCmp(ipToGateWay(game["badusers"][i]["ip"]), self.pers["info"]["gateway"]) && game["badusers"][i]["punish"] == 2)
+		{
+			//gateway punish
+			self CL_addPunish();
+		}
+		else if((strCmp(game["badusers"][i]["sguid"], self.pers["info"]["sguid"]) || strCmp(game["badusers"][i]["ip"], self.pers["info"]["ip"]) || (game["badusers"][i]["gid"] == self.pers["info"]["gid"] && self.pers["info"]["gid"] > 0)) && game["badusers"][i]["punish"] == 1)
+		{
+			//punish
+			self CL_addPunish();
+		}
+		*/
+		if(strCmp(ipToGateWay(game["badusers"][i]["ip"]), self.pers["info"]["gateway"]) && game["badusers"][i]["ban"] == 2)
+		{
+			//gateway ban
+			return;
+		}
+		else if((game["badusers"][i]["gid"] == self.pers["info"]["gid"] && self.pers["info"]["gid"] > 0) && game["badusers"][i]["ban"] == 1)
+		{
+			//ban
+			self dropClient("Baned");
+			return;
+		}
+		else if(strCmp(ipToGateWay(game["badusers"][i]["ip"]), self.pers["info"]["gateway"]) && game["badusers"][i]["punish"] == 2)
+		{
+			//gateway punish
+			self CL_addPunish();
+		}
+		else if((game["badusers"][i]["gid"] == self.pers["info"]["gid"] && self.pers["info"]["gid"] > 0) && game["badusers"][i]["punish"] == 1)
+		{
+			//punish
+			self CL_addPunish();
+		}
+	}
+	
+	if(!self.pers["info"]["gid"])
+	{	
+		self.pers["info"]["username"] = "";
+		self.pers["info"]["password"] = "";
+		self.pers["info"]["nickname"] = self.name;
+		self.pers["info"]["original"] = isValidPlayerCdKey(self.pers["info"]["guid"]);
+		self.pers["info"]["protocol"] = int(CL_getProtocol());
+		self.pers["info"]["teamtag"] = "";
+		self.pers["info"]["email"] = "";
+		self.pers["info"]["evolve"] = "";
+		self.pers["info"]["country"] = self.pers["info"]["geo"][0];
+		self.pers["info"]["lang"] = self.pers["info"]["geo"][0];
+		self.pers["info"]["money"] = 0;
+		self.pers["info"]["ban"] = 0;
+		self.pers["info"]["punish"] = 0;
+		self.pers["info"]["groupid"] = 1;
+		self.pers["info"]["regdate"] = self.pers["info"]["logindate"];
+		self.pers["info"]["lastlogin"]= self.pers["info"]["logindate"];
+		self.pers["info"]["logintype"] = 0;
+		self.pers["info"]["playedtime"] = 0;
+		self.pers["info"]["status"] = 1;
+		self.pers["info"]["secret"] = randomIntRange(50, 500000);
+		
+		SQL_setUser(self.pers["info"]);
+		
+		self.pers["info"]["gid"] = SQL_getUserLastInsertId();
+		self CL_setUserGid(self.pers["info"]["gid"], self.pers["info"]["secret"]);
+	}
+	else
+	{
+		data = SQL_getUser(self.pers["info"]["gid"]);
+		count = game["tableFileds"]["users"].size;
+		for(i = 0; i < count; i++)
+		{
+			field = strTok(game["tableFileds"]["users"][i], ":");
+			self.pers["info"][field[0]] = data[field[0]];
+		}
+		self.pers["info"]["lastlogin"] = self.pers["info"]["logindate"];
+		self.pers["info"]["nickname"] = self.name;
+		self.pers["info"]["ip"] = self getIp();
+		self.pers["info"]["original"] = isValidPlayerCdKey(self.pers["info"]["guid"]);
+		self.pers["info"]["protocol"] = int(CL_getProtocol());
+		self.pers["info"]["status"] = 1;
+		self.pers["info"]["country"] = self.pers["info"]["geo"][0];
+		SQL_updateUser(self.pers["info"]["gid"], self.pers["info"]);
+	}
+	
+	self.pers["ghud"] = SQL_getHuds(self.pers["info"]["gid"]);
+	if(!self.pers["ghud"].size)
+	{
+		SQL_setHuds(self.pers["info"]["gid"]);
+		self.pers["ghud"] = SQL_getHuds(self.pers["info"]["gid"]);
+	}
+	
+	self.pers["gstat"]["db"] = SQL_getStats(self.pers["info"]["gid"], game["G_GAMETYPE"], 0);
+	if(!self.pers["gstat"]["db"].size)
+	{
+		SQL_setStats(self.pers["info"]["gid"], game["G_GAMETYPE"]);
+		self.pers["gstat"]["db"] = SQL_getStats(self.pers["info"]["gid"], game["G_GAMETYPE"], 0);
+	}
+	
+	self.pers["gstat"]["tmp"]["wallbang"] = 0;
+	self.pers["gstat"]["tmp"]["death"] = 0;
+	self.pers["gstat"]["tmp"]["kill"] = 0;
+	self.pers["gstat"]["tmp"]["headshot"] = 0;
+	self.pers["gstat"]["tmp"]["suicide"] = 0;
+	self.pers["gstat"]["tmp"]["longshot"] = 0;
+	self.pers["gstat"]["tmp"]["melee"] = 0;
+	self.pers["gstat"]["tmp"]["frag"] = 0;
+	self.pers["gstat"]["tmp"]["frag_splash"] = 0;
+	self.pers["gstat"]["tmp"]["score"] = 0;
+	
+	self CL_setUserPerm();
+	
+	self setClientDvars("cg_scoreboardPingGraph", 1,"cg_ScoresPing_MaxBars", 10, "cg_ScoresPing_BgColor", "1 1 1 0", "cg_ScoresPing_HighColor", "0.8 0 0 1", "cg_ScoresPing_Interval", 15, "cg_ScoresPing_LowColor", "0 0.8 0 1", "cg_ScoresPing_MedColor", "0.8 0.8 0 1");
+
+	self thread CL_playTimer();
+	self thread loadAllClientHud();
+	self thread onSpawnPlayer();
+	thread SV_ConLangReplMessage("CONNECT_MSG", array("NAME", "GROUP", "GEO_0", "GEO_2", "CDKEY"), array(self.name, (self.pers["group"]["groupcolor"] + self.pers["group"]["displayname"]), self.pers["info"]["geo"][0], self.pers["info"]["geo"][2], boolToString(self.pers["info"]["original"], "^2Original", "^1Cracked")), 0);
+	
+	newPluginEventCount = level.newPluginEvent.size;
+	for(pluginEventIndex = 0; pluginEventIndex < newPluginEventCount; pluginEventIndex++)
+	{
+		if(strCmp(level.newPluginEvent[pluginEventIndex]["type"], "playerConnect"))
+			self thread [[level.newPluginEvent[pluginEventIndex]["func"]]]();
+	}
+}
+
+onSpawnPlayer()
+{
+	self endon("intermission");
+	self endon("disconnect");
+	
+	while(1)
+	{
+		self waittill("spawned_player");
+		self thread setStatusIcon();
+		
+		if(isSet(self.pers["first_spawn"]))
+			return;
+		
+		self.pers["first_spawn"] = 1;
+		self thread CL_printRules();
+		
+		/*
+		for(i = 3000; i < 3499; i++)
+		{
+			printf("id: " + i + " stat: " + self getStat(i) + "\n");
+		}
+		*/
+		
+		newPluginEventCount = level.newPluginEvent.size;
+		for(pluginEventIndex = 0; pluginEventIndex < newPluginEventCount; pluginEventIndex++)
+		{
+			if(strCmp(level.newPluginEvent[pluginEventIndex]["type"], "playerSpawn"))
+				thread [[level.newPluginEvent[pluginEventIndex]["func"]]]();
+		}
+	}
+}
+
+setStatusIcon()
+{
+	while(1)
+	{
+		if(isSet(self.statusicon) && self.statusicon != self.pers["group"]["icon"] && self.statusicon != "hud_status_dead")
+			self.statusicon = self.pers["group"]["icon"];
+		
+		wait(1.5);
+	}
+}
+
+CB_playerDamage(eInflictor, eAttacker, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, timeOffset)
+{
+	if ((iDFlags & level.iDFLAGS_PENETRATION) && (self.health - iDamage) <= 1 && self.pers["team"] != eAttacker.pers["team"])
+	{
+		//wallbang
+		eAttacker.pers["gstat"]["tmp"]["wallbang"]++;
+		eAttacker.pers["gstat"]["db"]["wallbang"]++;
+	}
+}
+
+CB_playerKilled(eInflictor, eAttacker, iDamage, sMeansOfDeath, sWeapon, vDir, sHitLoc, timeOffset, deathAnimDuration)
+{
+	self.pers["gstat"]["tmp"]["death"]++;
+	self.pers["gstat"]["db"]["death"]++;
+	
+	self.pers["gstat"]["tmp"]["killstreak"] = 0;
+	self.pers["gstat"]["db"]["killstreak"] = 0;
+	
+	if(eAttacker != self)
+	{
+		eAttacker.pers["gstat"]["tmp"]["kill"]++;
+		eAttacker.pers["gstat"]["db"]["kill"]++;
+		
+		eAttacker.pers["gstat"]["tmp"]["score"] += 10;
+		eAttacker.pers["gstat"]["db"]["score"] += 10;
+		
+		eAttacker.pers["gstat"]["tmp"]["killstreak"]++;
+		if(eAttacker.pers["gstat"]["db"]["killstreak"] < eAttacker.pers["gstat"]["tmp"]["killstreak"])
+			eAttacker.pers["gstat"]["db"]["killstreak"] = eAttacker.pers["gstat"]["tmp"]["killstreak"];
+	}
+		
+	if(strCmp(sMeansOfDeath, "MOD_HEAD_SHOT"))
+	{
+		//headshot
+		eAttacker.pers["gstat"]["tmp"]["headshot"]++;
+		eAttacker.pers["gstat"]["db"]["headshot"]++;
+		
+		eAttacker.pers["gstat"]["tmp"]["score"] += 10;
+		eAttacker.pers["gstat"]["db"]["score"] += 10;
+	}
+		
+	if(strCmp(sMeansOfDeath, "MOD_FALLING") || eAttacker == self)
+	{
+		//suicide
+		eAttacker.pers["gstat"]["tmp"]["suicide"]++;
+		eAttacker.pers["gstat"]["db"]["suicide"]++;
+	}
+	
+	if(isAlive(eAttacker) && (strCmp(sMeansOfDeath, "MOD_RIFLE_BULLET") || strCmp(sMeansOfDeath, "MOD_PISTOL_BULLET") || strCmp(sMeansOfDeath, "MOD_HEAD_SHOT")) && distance(eAttacker.origin, self.origin) > 1500 && !isSet(eAttacker.assistedSuicide))
+	{
+		//longshot
+		eAttacker.pers["gstat"]["tmp"]["longshot"]++;
+		eAttacker.pers["gstat"]["db"]["longshot"]++;
+		
+		eAttacker.pers["gstat"]["tmp"]["score"] += 10;
+		eAttacker.pers["gstat"]["db"]["score"] += 10;
+	}
+	
+	if(strCmp(sMeansOfDeath, "MOD_MELEE"))
+	{
+		//knife kill
+		eAttacker.pers["gstat"]["tmp"]["melee"]++;
+		eAttacker.pers["gstat"]["db"]["melee"]++;
+		
+		eAttacker.pers["gstat"]["tmp"]["score"] += 10;
+		eAttacker.pers["gstat"]["db"]["score"] += 10;
+	}
+	
+	if(strCmp(sWeapon, "frag_grenade_mp") && eAttacker != self)
+	{
+		//frag kill
+		eAttacker.pers["gstat"]["tmp"]["frag"]++;
+		eAttacker.pers["gstat"]["db"]["frag"]++;
+		
+		eAttacker.pers["gstat"]["tmp"]["score"] += 10;
+		eAttacker.pers["gstat"]["db"]["score"] += 10;
+	}
+	
+	if(strCmp(sMeansOfDeath, "MOD_GRENADE_SPLASH") && eAttacker != self)
+	{
+		//road kill
+		eAttacker.pers["gstat"]["tmp"]["frag_splash"]++;
+		eAttacker.pers["gstat"]["db"]["frag_splash"]++;
+		
+		eAttacker.pers["gstat"]["tmp"]["score"] += 10;
+		eAttacker.pers["gstat"]["db"]["score"] += 10;
+	}
+}
+
+CB_playerDisconnect()
+{
+	if(isSet(self.pers["isBot"]) && self.pers["isBot"])
+		return;
+	
+	self.pers["info"]["status"] = 0;
+	SQL_updateUser_th2(game["mysql"], self.pers["info"]["gid"], self.pers["info"]);
+	SQL_updateStats(self.pers["info"]["gid"], game["G_GAMETYPE"], 100, self.pers["gstat"]["db"]);
+	
+	SetConfigstring((742 + self.pers["info"]["entnum"]), ("GREEN_STATISTIC_" + self.pers["info"]["entnum"]));
+	self setClientDvar("cg_drawfps", 1);
+	
+	newPluginEventCount = level.newPluginEvent.size;
+	for(pluginEventIndex = 0; pluginEventIndex < newPluginEventCount; pluginEventIndex++)
+	{
+		if(strCmp(level.newPluginEvent[pluginEventIndex]["type"], "playerDisconnect"))
+			self thread [[level.newPluginEvent[pluginEventIndex]["func"]]]();
+	}
+}
+
+CB_playerSay(respons, type)
+{
+	if(respons[0] == "!" || respons[0] == "/" || respons[0] == "$")
+	{
+		
+	}
+	else
+	{
+		if(type)
+			log["type"] = "say_team";
+		else
+			log["type"] = "say";
+		
+		log["from_id"] = self.pers["info"]["gid"];
+		log["to_id"] = -1;
+		log["logtext"] = respons;
+		log["logdate"] = date("%Y-%m-%d %H:%M:%S");
+		SQL_addLog(log);
+	}
+	
+	newPluginEventCount = level.newPluginEvent.size;
+	for(pluginEventIndex = 0; pluginEventIndex < newPluginEventCount; pluginEventIndex++)
+	{
+		if(strCmp(level.newPluginEvent[pluginEventIndex]["type"], "playersay"))
+			self thread [[level.newPluginEvent[pluginEventIndex]["func"]]](respons, type);
+	}
+}
+
+CB_scriptCommand(cmd, arg)
+{
+	self thread SV_loadAllScriptCommand(cmd, arg);
+	newPluginEventCount = level.newPluginEvent.size;
+	for(pluginEventIndex = 0; pluginEventIndex < newPluginEventCount; pluginEventIndex++)
+	{
+		if(strCmp(level.newPluginEvent[pluginEventIndex]["type"], "startGametype"))
+			self thread [[level.newPluginEvent[pluginEventIndex]["func"]]](cmd, arg);
+	}
+}
+
+EV_endGame()
+{
+	game["runGame"] = 0;
+	thread SV_saveUsersData();
+	/*
+	n = 742;
+	for(i = 0; i < 64; i++)
+	{
+		SetConfigstring(n,"" + "GREEN_STATISTIC_" + i);
+		n++;
+	}*/
+}
+
+SV_saveUsersData()
+{
+	players = getAllPlayers();
+	count = players.size;
+	
+	for(i = 0; i < count; i++)
+	{
+		if(isSet(players[i].pers["isBot"]) && !players[i].pers["isBot"] && isSet(players[i].pers["info"]["gid"]) && players[i].pers["info"]["gid"] > 0)
+		{
+			SQL_updateUser(players[i].pers["info"]["gid"], players[i].pers["info"]);
+			SQL_updateStats(players[i].pers["info"]["gid"], game["G_GAMETYPE"], 0, players[i].pers["gstat"]["db"]);
+		}
+	}
+}
